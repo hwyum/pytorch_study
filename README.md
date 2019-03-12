@@ -9,4 +9,4 @@ pytorch study code
 
 **2. wk2: CIFAR10 CNN Implementation with custom DataLoader**
 
-**3. wk3: Naver Movie Classification
+**3. wk3: Naver Movie Classification**
