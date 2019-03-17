@@ -1,31 +1,31 @@
 from torch.utils.data import Dataset, DataLoader, ConcatDataset
 import pandas as pd
+import os
 
 class movie_data(Dataset):
     """naver movie dataset class"""
 
-    def __init__(self, batch_name, transform=None):
-        """
+    def __init__(self, filename, transform=None):
+        """ Instantiating movie_dataset class
+
         Args:
-            batch_name (string): batch file name
+            filename (string): data file name (train+test: ratings.txt)
             transform (callable, optional): Optional transform to be applied
                 on a sample.
         """
-        # path = './data/cifar-10-batches-py/'
-        #
+        path = '../data/movie/'
+        path = os.path.join(path, filename)
         # path = os.path.join(path, batch_name)
         # self.batch = unpickle(path)
-        # self.transform = transform
+        self.data = pd.read_table(path)
+        self.transform = transform
 
     def __len__(self):
-        # return len(self.batch[b'data'])
+        return len(self.data)
 
     def __getitem__(self, idx):
-        # image = self.batch[b'data'].reshape(10000, 3, 32, 32).transpose(0, 2, 3, 1).astype("uint8")[idx]
-        # label = np.array(self.batch[b'labels'])[idx]
-        # sample = (image, label)
-        #
-        # if self.transform:
-        #     sample = self.transform(sample)
-        #
-        # return sample
+        document = self.data['document'].iloc[idx]
+        label = self.data['label'].iloc[idx]
+        sample = (document, label)
+
+        return sample
