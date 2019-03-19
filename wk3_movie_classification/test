@@ -1,3 +1,0 @@
-from data_load import movie_data
-
-dataset = movie_data('ratings.txt')
