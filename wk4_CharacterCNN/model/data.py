@@ -2,16 +2,19 @@ from torch.utils.data import Dataset
 import torch
 import pandas as pd
 
-class movie_data_jaso(Dataset):
-    ''' jaso level movie dataset class '''
+
+class MovieDataJaso(Dataset):
+    """
+    jaso level movie dataset class
+    """
 
     def __init__(self, filepath, tokenizer, padder) -> None:
-        ''' initializing the class
-        Args:
-            filepath : dataset file path
-            tokenizer : tokenizer to be tokenized into jaso level
-            padder : padder to be padded
-        '''
+        """
+        initializing the class
+        :param filepath: dataset file path
+        :param tokenizer: tokenizer used to tokenize into jaso level
+        :param padder: padder used to pad when the length of the sequence is less than max_len
+        """
 
         self.data = pd.read_table(filepath)
         self.tokenizer = tokenizer

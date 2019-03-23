@@ -3,9 +3,9 @@ import torch
 import torch.nn as nn
 import torch.functional as F
 
-class characterCNN(nn.Module):
+class CharacterCNN(nn.Module):
     ''' Character level CNN implementation'''
-    def __init__(self, num_embedding, embedding_dim, max_len=300, class_num=2) -> None:
+    def __init__(self, num_embedding, embedding_dim, class_num=2) -> None:
         '''
         Args:
             num_embedding: length of the token2index dictionary (size of the character set)
@@ -14,7 +14,7 @@ class characterCNN(nn.Module):
             class_num: the number of output classes, default = 2
         '''
 
-        super(characterCNN).__init__()
+        super(CharacterCNN).__init__()
 
         self._embedding = nn.Embedding(num_embeddings=num_embedding, embedding_dim=embedding_dim, padding_idx=0)
         self._conv_1 = nn.Conv1d(in_channels=embedding_dim, out_channels=1024, kernel_size=7)
