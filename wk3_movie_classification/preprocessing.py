@@ -10,8 +10,8 @@ from konlpy.tag import Mecab
 mecab = Mecab()
 
 # load dataset
-dataset = movie_data('ratings.txt')
-data = dataset.data[['document', 'label']] # document 컬럼과 label 컬럼만 남김
+data = pd.read_table('./data/ratings.txt')
+data = data[['document', 'label']] # document 컬럼과 label 컬럼만 남김
 data = data[~data.document.isna()] # NA 제거
 
 # train / test split
@@ -33,9 +33,9 @@ ptr_embedding = nlp.embedding.create('fasttext',source='wiki.ko')
 vocab.set_embedding(ptr_embedding)
 
 # saving vocab
-with open('../data/vocab.pkl', mode = 'wb') as io:
+with open('./data/vocab.pkl', mode = 'wb') as io:
     pickle.dump(vocab, io)
 
 # saving training / test dataset to txt
-tr_data.to_csv('../data/movie/tr_ratings.txt', index=False, sep='\t')
-tst_data.to_csv('../data/movie/tst_ratings.txt', index=False, sep='\t')
+tr_data.to_csv('./data/tr_ratings.txt', index=False, sep='\t')
+tst_data.to_csv('./data/tst_ratings.txt', index=False, sep='\t')
