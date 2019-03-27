@@ -10,6 +10,7 @@ from model.network import CharacterCNN
 import json
 import os
 import gluonnlp as nlp
+from tqdm import tqdm_notebook, tqdm
 
 
 def train(cfgpath):
@@ -46,6 +47,55 @@ def train(cfgpath):
     dev = torch.device("cuda") if torch.cuda.is_available() else torch.device("cpu")
     model.to(dev)
 
+    ## Training
+    for epoch in tqdm_notebook(range(epochs), desc = 'Epoch'):
+
+        model.train()
+        scheduler.step()
+        avg_tr_loss = 0
+        avg_tst_loss = 0
+        tr_step = 0
+        tst_step = 0
+
+        for xb, yb in tqdm_notebook(tr_dl, desc = 'Mini Batch'):
+            xb = xb.to(dev)
+            yb = yb.to(dev)
+            output = model(xb)
+
+            loss, _ = loss_batch(model, loss_func, xb, yb, opt=opt)
+
+            # losses, nums = zip(
+            #     *[loss_batch(model, loss_func, xb, yb) for xb, yb in valid_dl]  ## *연산자에 대한 이해가 부족해....
+            # )
+            # val_loss = np.sum(np.multiply(losses, nums)) / np.sum(nums)
+
+            # opt.zero_grad()
+            # tr_loss = loss_func(output, yb)
+            # tr_loss.backward()  # backprop
+            # opt.step()  # weight update
+
+            avg_tr_loss += loss
+            tr_step += 1
+        else:
+            avg_tr_loss /= tr_step
+
+        model.eval()
+
+
+
+def loss_batch(model, loss_func, xb, yb, opt=None):
+    loss = loss_func(model(xb), yb)
+
+    if opt is not None:
+        loss.backward() ## backprop
+        opt.step() ## weight update
+        opt.zero_grad() ## gradient initialize
+
+    return loss.item(), len(xb)
 
 if __name__ == '__main__':
     fire.Fire(train)
+
+
+
+
