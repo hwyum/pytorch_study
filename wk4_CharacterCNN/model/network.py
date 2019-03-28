@@ -14,7 +14,7 @@ class CharacterCNN(nn.Module):
             class_num: the number of output classes, default = 2
         '''
 
-        super(CharacterCNN).__init__()
+        super(CharacterCNN, self).__init__()
 
         self._embedding = nn.Embedding(num_embeddings=num_embedding, embedding_dim=embedding_dim, padding_idx=0)
         self._conv_1 = nn.Conv1d(in_channels=embedding_dim, out_channels=1024, kernel_size=7)
