@@ -10,3 +10,7 @@ pytorch study code
 **2. wk2: CIFAR10 CNN Implementation with custom DataLoader**
 
 **3. wk3: Naver Movie Classification**
+ * Reference: [Convolutional Neural Networks for Sentence Classification](https://arxiv.org/abs/1408.5882)
+
+**4. wk4: Naver Movie Classification in Character level**
+ * Reference: [Character-level Convolutional Networks for Text Classification](https://arxiv.org/abs/1509.01626)
