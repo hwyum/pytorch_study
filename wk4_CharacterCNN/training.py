@@ -1,6 +1,6 @@
 import torch
 import torch.nn as nn
-import torch.functional as F
+import torch.nn.functional as F
 from torch import optim
 from torch.utils.data import DataLoader
 import fire
@@ -11,6 +11,7 @@ import json
 import os
 import gluonnlp as nlp
 from tqdm import tqdm_notebook, tqdm
+import numpy as np
 
 
 def train(cfgpath):
@@ -84,7 +85,7 @@ def train(cfgpath):
         total = 0
 
         with torch.no_grad():
-            losses, nums, correct = zip(*[loss_batch(model, loss_func, xb, yb) for xb, yb in tst_dl])
+            losses, nums, correct = zip(*[loss_batch(model, loss_func, xb.to(dev), yb.to(dev)) for xb, yb in tst_dl])
             avg_tst_loss = np.sum(np.multiply(losses, nums)) / np.sum(nums)
             correct_num = np.sum(correct)
             total = np.sum(nums)
