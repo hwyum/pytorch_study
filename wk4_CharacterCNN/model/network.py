@@ -1,7 +1,8 @@
 
+
 import torch
 import torch.nn as nn
-import torch.functional as F
+import torch.nn.functional as F
 
 class CharacterCNN(nn.Module):
     ''' Character level CNN implementation'''
@@ -14,7 +15,7 @@ class CharacterCNN(nn.Module):
             class_num: the number of output classes, default = 2
         '''
 
-        super(CharacterCNN).__init__()
+        super(CharacterCNN,self).__init__()
 
         self._embedding = nn.Embedding(num_embeddings=num_embedding, embedding_dim=embedding_dim, padding_idx=0)
         self._conv_1 = nn.Conv1d(in_channels=embedding_dim, out_channels=1024, kernel_size=7)
@@ -40,7 +41,9 @@ class CharacterCNN(nn.Module):
         x = self._conv_3(x) # N x 1024 x 26
         x = self._conv_3(x) # N x 1024 x 24
         conv_output = self._maxpool(self._conv_3(x)) # N x 1024 x 22 -> N x 1024 x 7
-
+        conv_output = torch.flatten(conv_output, start_dim=1) # N x (1024 x 7)
+#         print("conv_output_size :", conv_output.size()) 
+        
         # FC Layers #7~9
         fc_output = self._fc1(conv_output)
         fc_output = self._fc2(fc_output)
@@ -50,8 +53,5 @@ class CharacterCNN(nn.Module):
 
     ## initialization에 대해서는 좀 더 찾아볼것!!
     def __init_weights(self, layer) -> None:
-        nn.init.normal_(layer.weight, mean=0, std=0.02) # 논문 설정
-        # if isinstance(layer, nn.Conv1d):
-        #     nn.init.kaiming_uniform_(layer.weight)
-        # elif isinstance(layer, nn.Linear):
-        #     nn.init.xavier_normal_(layer.weight)
+        if isinstance(layer, nn.Conv1d) or isinstance(layer, nn.Linear):
+            nn.init.normal_(layer.weight, mean=0, std=0.02)
