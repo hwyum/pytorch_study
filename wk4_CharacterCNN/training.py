@@ -82,6 +82,13 @@ def train(cfgpath):
               .format(epoch, avg_tr_loss,avg_tst_loss,accuracy))
 
 
+    ckpt = {'epoch': epochs,
+            'model_state_dict': model.state_dict(),
+            'opt_state_dict': opt.state_dict()}
+    savepath = params['filepath'].get('ckpt')
+    torch.save(ckpt, savepath)
+
+
 def loss_batch(model, loss_func, xb, yb, opt=None):
     correct = 0
     output = model(xb)

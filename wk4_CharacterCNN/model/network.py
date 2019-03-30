@@ -1,5 +1,4 @@
 
-
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
@@ -23,6 +22,7 @@ class CharacterCNN(nn.Module):
         self._conv_3 = nn.Conv1d(in_channels=1024, out_channels=1024, kernel_size=3)
         self._maxpool = nn.MaxPool1d(3)
 
+        self._dropout = nn.Dropout(p=0.5)
         self._fc1 = nn.Linear(in_features=1024*7, out_features=2048)
         self._fc2 = nn.Linear(in_features=2048, out_features=2048)
         self._fc3 = nn.Linear(in_features=2048, out_features=class_num)
@@ -45,8 +45,8 @@ class CharacterCNN(nn.Module):
 #         print("conv_output_size :", conv_output.size()) 
         
         # FC Layers #7~9
-        fc_output = self._fc1(conv_output)
-        fc_output = self._fc2(fc_output)
+        fc_output = self._dropout(self._fc1(conv_output))
+        fc_output = self._dropout(self._fc2(fc_output))
         fc_output = self._fc3(fc_output)
 
         return fc_output
