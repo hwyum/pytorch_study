@@ -23,7 +23,7 @@ def train(cfgpath):
 
     # Load Model
     model = CharacterCNN(len(tokenizer.token2idx), embedding_dim=params['model'].get('embedding_dim'),
-                         class_num=params['model'].get('num_classes'))  # num_embedding, embedding_dim, class_num=2
+                         model_type=params['model'].get('model_type'), class_num=params['model'].get('num_classes'))  # num_embedding, embedding_dim, class_num=2
 
     # Build Data Loader
     tr_path = params['filepath'].get('tr')

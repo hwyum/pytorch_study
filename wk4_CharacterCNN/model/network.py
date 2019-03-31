@@ -5,27 +5,35 @@ import torch.nn.functional as F
 
 class CharacterCNN(nn.Module):
     ''' Character level CNN implementation'''
-    def __init__(self, num_embedding, embedding_dim, class_num=2) -> None:
+    def __init__(self, num_embedding, embedding_dim, model_type, class_num=2, ) -> None:
         '''
         Args:
             num_embedding: length of the token2index dictionary (size of the character set)
             embedding_dim: embedding dimension
             max_len: maximum length of sequences, default = 300
+            type: big model or small model (regarding original paper)
             class_num: the number of output classes, default = 2
         '''
 
         super(CharacterCNN,self).__init__()
 
+        if model_type=="small":
+            conv_channel = 256
+            fc_out = 1024
+        elif model_type=="large":
+            conv_channel = 1024
+            fc_out = 2048
+
         self._embedding = nn.Embedding(num_embeddings=num_embedding, embedding_dim=embedding_dim, padding_idx=0)
-        self._conv_1 = nn.Conv1d(in_channels=embedding_dim, out_channels=1024, kernel_size=7)
-        self._conv_2 = nn.Conv1d(in_channels=1024, out_channels=1024, kernel_size=7)
-        self._conv_3 = nn.Conv1d(in_channels=1024, out_channels=1024, kernel_size=3)
+        self._conv_1 = nn.Conv1d(in_channels=embedding_dim, out_channels=conv_channel, kernel_size=7)
+        self._conv_2 = nn.Conv1d(in_channels=conv_channel, out_channels=conv_channel, kernel_size=7)
+        self._conv_3 = nn.Conv1d(in_channels=conv_channel, out_channels=conv_channel, kernel_size=3)
         self._maxpool = nn.MaxPool1d(3)
 
         self._dropout = nn.Dropout(p=0.5)
-        self._fc1 = nn.Linear(in_features=1024*7, out_features=2048)
-        self._fc2 = nn.Linear(in_features=2048, out_features=2048)
-        self._fc3 = nn.Linear(in_features=2048, out_features=class_num)
+        self._fc1 = nn.Linear(in_features=conv_channel*7, out_features=fc_out)
+        self._fc2 = nn.Linear(in_features=fc_out, out_features=fc_out)
+        self._fc3 = nn.Linear(in_features=fc_out, out_features=class_num)
 
         # initialization
         self.apply(self.__init_weights)
