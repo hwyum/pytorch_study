@@ -1,6 +1,7 @@
 from torch.utils.data import Dataset
 import torch
 import pandas as pd
+import numpy as np
 
 
 class MovieDataJaso(Dataset):
@@ -30,6 +31,9 @@ class MovieDataJaso(Dataset):
         document = self.data.iloc[idx].document
         label = self.data.iloc[idx].label
         document_tokenized = self.padder(self.tokenizer.tokenize_and_transform(document))
-        sample = (torch.tensor(document_tokenized), torch.tensor(label)) # transform into torch tensor
+
+        # print(type(document_tokenized), type(torch.tensor(np.asarray(label))))
+
+        sample = (torch.tensor(document_tokenized), torch.tensor(np.asarray(label))) # transform into torch tensor
 
         return sample
