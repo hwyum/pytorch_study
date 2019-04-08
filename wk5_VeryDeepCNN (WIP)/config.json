@@ -1,0 +1,16 @@
+
+{
+  "filepath": {"tr": "./data/tr_ratings.txt",
+               "val": "./data/val_ratings.txt",
+               "tst": "./data/tst_ratings.txt",
+               "ckpt": "./checkpoint/model_ckpt.tar"},
+
+  "model": {"embedding_dim": 16,
+            "num_classes":  2,
+            "model_type": "small"},
+
+  "training": {"epochs": 20,
+               "batch_size": 128,
+               "learning_rate": 1e-3,
+               "momentum": 0.9}
+}
