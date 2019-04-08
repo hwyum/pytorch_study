@@ -51,14 +51,14 @@ def train(cfgpath):
     writer = SummaryWriter(log_dir='./runs/exp')
 
     # Training
-    for epoch in tqdm_notebook(range(epochs), desc='Epoch'):
+    for epoch in tqdm(range(epochs), desc='Epoch'):
 
         model.train()
         scheduler.step()
         avg_tr_loss = 0
         # tr_step = 0
 
-        for step, mb in enumerate(tqdm_notebook(tr_dl, desc='Training')):
+        for step, mb in enumerate(tqdm(tr_dl, desc='Training')):
             xb, yb = map(lambda x: x.to(dev), mb)
             loss, _, _ = loss_batch(model, loss_func, xb, yb, opt=opt)
             avg_tr_loss += loss
@@ -109,7 +109,7 @@ def evaluate(model, loss_func, dataloader, dev):
     avg_loss = 0
     correct = 0
     num_yb = 0
-    for step, mb in enumerate(tqdm_notebook(dataloader, desc = 'Validation')):
+    for step, mb in enumerate(tqdm(dataloader, desc = 'Validation')):
         xb, yb = map(lambda x: x.to(dev), mb)
         output = model(xb)
         loss = loss_func(output, yb)
