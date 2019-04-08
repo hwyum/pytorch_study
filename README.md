@@ -14,3 +14,6 @@ pytorch study code
 
 **4. wk4: Naver Movie Classification in Character level**
  * Reference: [Character-level Convolutional Networks for Text Classification](https://arxiv.org/abs/1509.01626)
+
+**5. wk5: Naver movie Classification with Very Deep CNN**
+* Reference: [Very Deep Convolutional Networks for Text Classification](https://arxiv.org/abs/1606.01781)
