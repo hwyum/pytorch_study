@@ -5,29 +5,52 @@ import torch.nn.functional as F
 class ConvBlock(nn.Module):
     """ implementation of Convolutional block"""
     def __init__(self, in_channels, out_channels, shortcut:bool):
+        """
+        initialization of ConvBlock
+        :param in_channels: number of input channels (int)
+        :param out_channels: number of output channels (int)
+        :param shortcut: whether or not shortcut is used
+        """
         super(ConvBlock, self).__init__()
 
         self.shortcut = shortcut
+        self.in_channels = in_channels
+        self.out_channels = out_channels
         self._conv1 = nn.Conv1d(in_channels, out_channels, kernel_size=3, stride=1, padding=1)
         self._bn1 = nn.BatchNorm1d(num_features=out_channels)
         self._conv2 = nn.Conv1d(out_channels, out_channels, kernel_size=3, stride=1, padding=1)
         self._bn2 = nn.BatchNorm1d(num_features=out_channels)
+        self._conv1x1 = nn.Conv1d(self.in_channels, self.out_channels, kernel_size=1)
 
 
     def forward(self, input:torch.tensor) -> torch.tensor:
         residual = input
-        output = F.relu(self._bn1(self._conv1(input)))
-        output = self._bn2(self._conv2(output))
+        output1 = self._conv1(input)
+        output1 = F.relu(self._bn1(output1))
+
+        output2 = self._conv2(output1)
 
         if self.shortcut:
-            output += residual
+            if self.in_channels != self.out_channels:
+                residual = self._conv1x1(residual)
+            output2 += residual
 
-        return F.relu(output)
+        output_fin = F.relu(self._bn2(output2))
+
+        return output_fin
 
 class Flatten(nn.Module):
     """ flattening conv output to feed into FC layers"""
+    def __init__(self):
+        super(Flatten, self).__init__()
+
     def forward(self, input:torch.tensor) -> torch.tensor:
         return torch.flatten(input, start_dim=1)
+
+class Permute(nn.Module):
+    """ puermutation """
+    def forward(self, input:torch.tensor) -> torch.tensor:
+        return input.permute(0,2,1)
 
 class VDCNN(nn.Module):
     """ implementation of VDCNN model architecture """
@@ -45,21 +68,23 @@ class VDCNN(nn.Module):
         self._tempConv = nn.Conv1d(in_channels=embedding_dim, out_channels=64, kernel_size=3, stride=1, padding=1)
 
         self._convLayers = nn.Sequential(self._embedding,
-                                     self._tempConv,
-                                     ConvBlock(64,64,True),
-                                     ConvBlock(64,64,True),
-                                     nn.MaxPool1d(2),
-                                     ConvBlock(128,128,True),
-                                     ConvBlock(128,128,True),
-                                     nn.MaxPool1d(2),
-                                     ConvBlock(256, 256,True),
-                                     ConvBlock(256, 256,True),
-                                     nn.MaxPool1d(2),
-                                     ConvBlock(512, 512,True),
-                                     ConvBlock(512, 512,True),
-                                     nn.AdaptiveMaxPool1d(8))
+                                         Permute(),
+                                         self._tempConv,
+                                         ConvBlock(64,64,True),
+                                         ConvBlock(64,64,True),
+                                         nn.MaxPool1d(2),
+                                         ConvBlock(64,128,True),
+                                         ConvBlock(128,128,True),
+                                         nn.MaxPool1d(2),
+                                         ConvBlock(128, 256,True),
+                                         ConvBlock(256, 256,True),
+                                         nn.MaxPool1d(2),
+                                         ConvBlock(256, 512,True),
+                                         ConvBlock(512, 512,True),
+                                         nn.AdaptiveMaxPool1d(8),
+                                         Flatten())
 
-        self._fcLayers = nn.Sequential(Flatten,
+        self._fcLayers = nn.Sequential(
                                        nn.Linear(512*8, 2048),
                                        nn.Linear(2048, 2048),
                                        nn.Linear(2048, class_num))
