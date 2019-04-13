@@ -64,7 +64,7 @@ def train(cfgpath):
             avg_tr_loss += loss
             # tr_step += 1
 
-            if(epoch * len(tr_dl) + step) % 500 == 0:
+            if epoch > 0 and (epoch * len(tr_dl) + step) % 500 == 0:
                 val_loss, _ = evaluate(model,loss_func,val_dl,dev)
                 writer.add_scalars('losses', {'tr_loss':avg_tr_loss/(step+1),
                                               'val_loss':val_loss}, epoch * len(tr_dl) + step )
@@ -75,7 +75,7 @@ def train(cfgpath):
         model.eval()
         avg_val_loss, accuracy = evaluate(model, loss_func, val_dl, dev)
 
-        print('Epoch: {}, training loss: {:.3f}, test loss: {:.3f}, test accuracy: {:.3f}'
+        print('Epoch: {}, training loss: {:.3f}, validation loss: {:.3f}, validation accuracy: {:.3f}'
               .format(epoch, avg_tr_loss, avg_val_loss, accuracy))
 
 
