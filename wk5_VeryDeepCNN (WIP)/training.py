@@ -84,7 +84,7 @@ def train(cfgpath):
             'opt_state_dict': opt.state_dict()}
     savepath = params['filepath'].get('ckpt')
     torch.save(ckpt, savepath)
-
+    writer.close()
 
 def loss_batch(model, loss_func, xb, yb, opt=None):
     correct = 0
