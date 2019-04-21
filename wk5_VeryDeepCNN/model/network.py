@@ -4,7 +4,7 @@ import torch.nn.functional as F
 
 class ConvBlock(nn.Module):
     """ implementation of Convolutional block"""
-    def __init__(self, in_channels, out_channels, shortcut:bool):
+    def __init__(self, in_channels:int, out_channels:int, shortcut:bool) -> None:
         """
         initialization of ConvBlock
         :param in_channels: number of input channels (int)
@@ -22,7 +22,6 @@ class ConvBlock(nn.Module):
         self._bn2 = nn.BatchNorm1d(num_features=out_channels)
         self._conv1x1 = nn.Conv1d(self.in_channels, self.out_channels, kernel_size=1)
 
-
     def forward(self, input:torch.tensor) -> torch.tensor:
         residual = input
         output1 = self._conv1(input)
@@ -39,6 +38,7 @@ class ConvBlock(nn.Module):
 
         return output_fin
 
+
 class Flatten(nn.Module):
     """ flattening conv output to feed into FC layers"""
     def __init__(self):
@@ -47,10 +47,12 @@ class Flatten(nn.Module):
     def forward(self, input:torch.tensor) -> torch.tensor:
         return torch.flatten(input, start_dim=1)
 
+
 class Permute(nn.Module):
     """ puermutation """
     def forward(self, input:torch.tensor) -> torch.tensor:
         return input.permute(0,2,1)
+
 
 class VDCNN(nn.Module):
     """ implementation of VDCNN model architecture """

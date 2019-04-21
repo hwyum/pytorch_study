@@ -13,8 +13,8 @@ class MovieDataJaso(Dataset):
         """
         initializing the class
         :param filepath: dataset file path
-        :param tokenizer: tokenizer used to tokenize into jaso level
-        :param padder: padder used to pad when the length of the sequence is less than max_len
+        :param tokenizer: tokenizer used to tokenize into Jaso(자소) level
+        :param padder: padder used to pad when the length of the sequence is less than max_len (max_len: hyper parameter)
         """
 
         self.data = pd.read_table(filepath)
