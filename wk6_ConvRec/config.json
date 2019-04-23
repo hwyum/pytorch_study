@@ -1,0 +1,20 @@
+{
+  "filepath": {"tr": "./data/tr_ratings.txt",
+               "val": "./data/val_ratings.txt",
+               "tst": "./data/tst_ratings.txt",
+               "ckpt": "./checkpoint/model_ckpt.tar"},
+
+  "model": {"embedding_dim": 16,
+            "num_classes":  2,
+            "conv_layer_num": 5,
+            "conv_in_channels":  [16,  128, 128, 128, 128],
+            "conv_out_channels": [128, 128, 128, 128, 128],
+            "conv_kernel_size":  [5, 5, 3, 3, 3],
+            "conv_pooling_size": [2, 2, 2, 1, 2],
+            "hidden_size": 128
+            },
+
+  "training": {"epochs": 5,
+               "batch_size": 128,
+               "learning_rate": 1e-3}
+}
