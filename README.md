@@ -18,5 +18,5 @@ pytorch study code
 **5. wk5: Naver movie Classification with Very Deep CNN**
 * Reference: [Very Deep Convolutional Networks for Text Classification](https://arxiv.org/abs/1606.01781) 
 
-**5. wk6: Naver movie Classification with ConvRec**
+**6. wk6: Naver movie Classification with ConvRec**
 * Reference: [Efficient Character-level Document Classification by Combining Convolution and Recurrent Layers](https://arxiv.org/abs/1602.00367) 
