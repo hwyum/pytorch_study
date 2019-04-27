@@ -17,7 +17,8 @@ class MovieDataJaso(Dataset):
         :param padder: padder used to pad when the length of the sequence is less than max_len (max_len: hyper parameter)
         """
 
-        self.data = pd.read_table(filepath)
+        # read_table is deprecated, use read_csv instead, passing sep = '\t'.
+        self.data = pd.read_csv(filepath, sep='\t')
         self.tokenizer = tokenizer
         self.padder = padder
 
