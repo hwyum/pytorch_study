@@ -3,8 +3,13 @@ import torch.nn as nn
 import torch.nn.functional as F
 
 class Embedding(nn.Module):
-    """ Embedding """
+    """ class for Embedding """
     def __init__(self, num_embedding, embedding_dim) -> None:
+        """
+        initialization of Embedding class
+        :param num_embedding: size of vocab
+        :param embedding_dim: output embedding dimension
+        """
         super(Embedding, self).__init__()
         self._embedding = nn.Embedding(num_embeddings=num_embedding, embedding_dim=embedding_dim, padding_idx=0)
 
@@ -12,8 +17,15 @@ class Embedding(nn.Module):
         return self._embedding(input)
 
 class ConvLayer(nn.Module):
-    """ Convolusional layer with max pooling """
-    def __init__(self, in_channels:int, out_channels:int, kernel_size:int, pooling_size:int):
+    """ class for Convolusional layer with max pooling """
+    def __init__(self, in_channels:int, out_channels:int, kernel_size:int, pooling_size:int) -> None:
+        """
+        initialization of ConvLayer class
+        :param in_channels: number of input channels
+        :param out_channels: number of output channels
+        :param kernel_size: kernel size
+        :param pooling_size: pooling size for max pooling
+        """
         super(ConvLayer, self).__init__()
         self._conv = nn.Conv1d(in_channels=in_channels, out_channels=out_channels, kernel_size=kernel_size)
         self._maxpool = nn.MaxPool1d(pooling_size)
@@ -25,8 +37,13 @@ class ConvLayer(nn.Module):
         return output
 
 class RecLayer(nn.Module):
-    """ Bi-LSTM layer """
+    """ class for Bi-LSTM layer """
     def __init__(self, input_size, hidden_size):
+        """
+        initialization of RecLayer class
+        :param input_size: input dimension (of one timestep)
+        :param hidden_size: hidden dimension for hidden units
+        """
         super(RecLayer,self).__init__()
         self._bilstm = nn.LSTM(input_size=input_size, hidden_size=hidden_size, batch_first=True, bidirectional=True)
         self._dropout = nn.Dropout(0.5)
@@ -39,7 +56,6 @@ class RecLayer(nn.Module):
         # print('input shape for RecLayer: {}'.format(input.size()))
 
         output, (hn, cn) = self._bilstm(input)  # output shape: Batch x Seq_len x (Hidden_dim * 2)
-
         # print('output shape for Bi-LSTM: {}'.format(output.size()))
 
         hn_cat = torch.cat([hn[0], hn[1]], dim=1)
