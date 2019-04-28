@@ -18,7 +18,10 @@ class MovieDataJaso(Dataset):
         """
 
         # read_table is deprecated, use read_csv instead, passing sep = '\t'.
-        self.data = pd.read_csv(filepath, sep='\t')
+        data = pd.read_csv(filepath, sep='\t')
+
+        # 토큰 길이 20 이상인 데이터만 활용
+        self.data = data[data.document.map(lambda x: len(tokenizer.tokenize(x))) >= 20]
         self.tokenizer = tokenizer
         self.padder = padder
 
@@ -31,10 +34,13 @@ class MovieDataJaso(Dataset):
 
         document = self.data.iloc[idx].document
         label = self.data.iloc[idx].label
-        document_tokenized = self.padder(self.tokenizer.tokenize_and_transform(document))
+        document_tokenized = self.tokenizer.tokenize_and_transform(document)
+        length = len(document_tokenized)
+        document_tokenized_and_padded = self.padder(document_tokenized)
 
         # print(type(document_tokenized), type(torch.tensor(np.asarray(label))))
 
-        sample = (torch.tensor(document_tokenized), torch.tensor(np.asarray(label))) # transform into torch tensor
+        # transform into torch tensor
+        sample = (torch.tensor(document_tokenized_and_padded), torch.tensor(np.asarray(label)), torch.tensor(length))
 
         return sample
