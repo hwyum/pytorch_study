@@ -20,10 +20,9 @@ def train(cfgpath):
         params = json.loads(io.read())
 
     tokenizer = JamoTokenizer()
-    padder = nlp.data.PadSequence(length=300)
+    padder = nlp.data.PadSequence(length=348)
 
-    # def __init__(self, num_embedding: int, embedding_dim: int, conv_in_channels: List, conv_out_channels: List,
-    #              conv_kernel_size: List, conv_pooling_size: List, hidden_size, class_num: int):
+
     # Load Model
     model = ConvRec(len(tokenizer.token2idx), embedding_dim=params['model'].get('embedding_dim'),
                     conv_in_channels=params['model'].get('conv_in_channels'), conv_out_channels=params['model'].get('conv_out_channels'),
@@ -63,13 +62,13 @@ def train(cfgpath):
         model.train()
         scheduler.step()
         avg_tr_loss = 0
-        # tr_step = 0
 
         for step, mb in enumerate(tqdm(tr_dl, desc='Training')):
-            xb, yb = map(lambda x: x.to(dev), mb)
-            loss, _, _ = loss_batch(model, loss_func, xb, yb, opt=opt)
+            xb, yb, length = map(lambda x: x.to(dev), mb)
+            loss, _ = loss_batch(model, loss_func, xb, length, yb, opt)
             avg_tr_loss += loss
             # tr_step += 1
+            # print("max batch length shape: {}".format(torch.max(length)))
 
             if epoch > 0 and (epoch * len(tr_dl) + step) % 500 == 0:
                 val_loss, _ = evaluate(model,loss_func,val_dl,dev)
@@ -93,22 +92,16 @@ def train(cfgpath):
     torch.save(ckpt, savepath)
     writer.close()
 
-def loss_batch(model, loss_func, xb, yb, opt=None):
-    correct = 0
-    output = model(xb)
+def loss_batch(model, loss_func, xb, length, yb, opt):
+    # print("input length:{}, shape:{}".format(length,length.size()))
+    output = model((xb,length))
     loss = loss_func(output, yb)
 
-    if opt is not None:
-        loss.backward()  ## backprop
-        opt.step()  ## weight update
-        opt.zero_grad()  ## gradient initialize
+    loss.backward()  ## backprop
+    opt.step()  ## weight update
+    opt.zero_grad()  ## gradient initialize
 
-    ## test time인 경우, accuracy 계산
-    if opt is None:  # test time
-        _, predicted = torch.max(output, 1)
-        correct = (yb == predicted)
-
-    return loss.item(), len(xb), correct
+    return loss.item(), len(xb)
 
 def evaluate(model, loss_func, dataloader, dev):
     """ calculate validation loss and accuracy"""
@@ -117,8 +110,8 @@ def evaluate(model, loss_func, dataloader, dev):
     correct = 0
     num_yb = 0
     for step, mb in enumerate(tqdm(dataloader, desc = 'Validation')):
-        xb, yb = map(lambda x: x.to(dev), mb)
-        output = model(xb)
+        xb, yb, length = map(lambda x: x.to(dev), mb)
+        output = model((xb,length))
         loss = loss_func(output, yb)
         avg_loss += loss.item()
         # accuracy calculation
