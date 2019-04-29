@@ -41,12 +41,11 @@ def train(cfgpath):
 
     # loss function and optimization
     loss_func = F.cross_entropy
-    # opt = optim.SGD(model.parameters(), lr=params['training'].get('learning_rate'),
-    #                 momentum=params['training'].get('momentum'))
-    opt = optim.Adam(model.parameters(), lr=params['training'].get('learning_rate'))
+    opt = optim.Adam(model.parameters(), lr=params['training'].get('learning_rate'), weight_decay=1e-4)
+#     opt = optim.Adadelta(model.parameters(), lr=params['training'].get('learning_rate'), rho=0.95, eps=1e-5)
 
     # Adjust learning rate (참고: torch.optim.lr_scheduler)
-    scheduler = torch.optim.lr_scheduler.StepLR(opt, step_size=3, gamma=0.5, last_epoch=-1)
+#     scheduler = torch.optim.lr_scheduler.StepLR(opt, step_size=3, gamma=0.5, last_epoch=-1)
     epochs = params['training'].get('epochs')
 
     # GPU Setting
@@ -60,18 +59,18 @@ def train(cfgpath):
     for epoch in tqdm(range(epochs), desc='Epoch'):
 
         model.train()
-        scheduler.step()
+#         scheduler.step()
         avg_tr_loss = 0
 
         for step, mb in enumerate(tqdm(tr_dl, desc='Training')):
             xb, yb, length = map(lambda x: x.to(dev), mb)
-            loss, _ = loss_batch(model, loss_func, xb, length, yb, opt)
+            loss = loss_batch(model, loss_func, xb, yb, length, opt)
             avg_tr_loss += loss
             # tr_step += 1
             # print("max batch length shape: {}".format(torch.max(length)))
 
             if epoch > 0 and (epoch * len(tr_dl) + step) % 500 == 0:
-                val_loss, _ = evaluate(model,loss_func,val_dl,dev)
+                val_loss, _ = evaluate(model, loss_func, val_dl, dev)
                 writer.add_scalars('losses', {'tr_loss':avg_tr_loss/(step+1),
                                               'val_loss':val_loss}, epoch * len(tr_dl) + step )
                 model.train()
@@ -92,16 +91,17 @@ def train(cfgpath):
     torch.save(ckpt, savepath)
     writer.close()
 
-def loss_batch(model, loss_func, xb, length, yb, opt):
+def loss_batch(model, loss_func, xb, yb, length, opt):
     # print("input length:{}, shape:{}".format(length,length.size()))
     output = model((xb,length))
     loss = loss_func(output, yb)
 
     loss.backward()  ## backprop
+    torch.nn.utils.clip_grad_norm_(model.parameters(), 5, norm_type=2)  # gradient clipping
     opt.step()  ## weight update
     opt.zero_grad()  ## gradient initialize
 
-    return loss.item(), len(xb)
+    return loss.item()
 
 def evaluate(model, loss_func, dataloader, dev):
     """ calculate validation loss and accuracy"""
@@ -123,6 +123,7 @@ def evaluate(model, loss_func, dataloader, dev):
         avg_loss /= (step+1)
         accuracy = correct / num_yb
     return avg_loss, accuracy
+
 
 
 
