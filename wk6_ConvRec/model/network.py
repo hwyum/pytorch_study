@@ -30,9 +30,16 @@ class ConvRec(nn.Module):
                                   Pack_padded_seq(),
                                   RecLayer(conv_out_channels[-1], hidden_size),  # output_shape : NLC
                                   nn.Dropout(0.5),
-                                  Flatten(),
                                   nn.Linear(hidden_size * 2, class_num))
+
+        self.apply(self._init_weights)
 
     def forward(self, inputs: (torch.Tensor, torch.Tensor)) -> torch.Tensor:
         output = self._ops(inputs)
         return output
+
+    def _init_weights(self, layer) -> None:
+        if isinstance(layer, nn.Conv1d):
+            nn.init.kaiming_uniform_(layer.weight)
+        elif isinstance(layer, nn.Linear):
+            nn.init.xavier_normal_(layer.weight)
