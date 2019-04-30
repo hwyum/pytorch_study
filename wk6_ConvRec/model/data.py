@@ -1,3 +1,4 @@
+
 from torch.utils.data import Dataset
 import torch
 import pandas as pd
@@ -41,6 +42,6 @@ class MovieDataJaso(Dataset):
         # print(type(document_tokenized), type(torch.tensor(np.asarray(label))))
 
         # transform into torch tensor
-        sample = (torch.tensor(document_tokenized_and_padded), torch.tensor(np.asarray(label)), torch.tensor(length))
+        sample = (torch.tensor(document_tokenized_and_padded), torch.tensor(np.asarray(label)), torch.tensor(np.asarray(length)))
 
         return sample
