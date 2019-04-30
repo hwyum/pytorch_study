@@ -1,3 +1,4 @@
+
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
@@ -63,13 +64,16 @@ class Pack_padded_seq(nn.Module):
 
     def forward(self, inputs: (torch.Tensor, torch.Tensor)) -> PackedSequence:
         input, length = inputs  # input: batch x length x hidden
-
+        
+        pad_seq = pad_sequence(input, batch_first=True)
         sorted_idx = torch.argsort(length, descending=True)
-        input = input[sorted_idx]
-        length = length[sorted_idx]
+#         input = input[sorted_idx]
+        length = length[sorted_idx]        
+        padded_seq = pad_seq[sorted_idx]
+        pack_padded_seq = pack_padded_sequence(padded_seq,length, batch_first=True)
         # print("input shape:{}, length shape:{}".format(input.size(), length.size()))
         # print("Rec Input length: {}".format(length))
-        return pack_padded_sequence(input, length, batch_first=True)
+        return pack_padded_seq
 
 
 class RecLayer(nn.Module):
@@ -123,5 +127,4 @@ class Dropout(nn.Module):
     def forward(self, inputs: (torch.Tensor, torch.Tensor)) -> (torch.Tensor, torch.Tensor):
         input, length = inputs
         return self._dropout(input), length
-
-
+    
