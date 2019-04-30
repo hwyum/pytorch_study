@@ -41,7 +41,7 @@ def train(cfgpath):
 
     # loss function and optimization
     loss_func = F.cross_entropy
-    opt = optim.Adam(model.parameters(), lr=params['training'].get('learning_rate'), weight_decay=1e-4)
+    opt = optim.Adam(model.parameters(), lr=params['training'].get('learning_rate'))
 #     opt = optim.Adadelta(model.parameters(), lr=params['training'].get('learning_rate'), rho=0.95, eps=1e-5)
 
     # Adjust learning rate (참고: torch.optim.lr_scheduler)
