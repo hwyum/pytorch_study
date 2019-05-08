@@ -13,7 +13,7 @@ class Embedding(nn.Module):
         :param is_pair: whether input data is a set of paired sentences or single sentences
         """
         super(Embedding, self).__init__()
-        self.is_pair = is_pair
+        self._is_pair = is_pair
         self._embedding = nn.Embedding(num_embeddings=num_embedding, embedding_dim=embedding_dim, padding_idx=0)
 
         # Embedding output : N x L x C
@@ -21,7 +21,7 @@ class Embedding(nn.Module):
     def forward(self, inputs: Union[torch.Tensor, Tuple[torch.Tensor, torch.Tensor]]) -> Union[torch.Tensor, Tuple[torch.Tensor, torch.Tensor]]:
         # print("[Embedding] inputs: {}".format(inputs))
 
-        if self.is_pair:
+        if self._is_pair:
             q1, q2= inputs
             emb_out_q1 = self._embedding(q1)
             emb_out_q2 = self._embedding(q2)
@@ -32,24 +32,41 @@ class Embedding(nn.Module):
 
 class BiLSTM(nn.Module):
     """ class for bidirectional LSTM """
-    def __init__(self, input_size, hidden_size, is_pair:bool) -> None:
+    def __init__(self, input_size, hidden_size, is_pair:bool=True) -> None:
         """ initialization of BiLSTM class """
         super(BiLSTM, self).__init__()
-        self.is_pair = is_pair
+        self._hidden_size = hidden_size
+        self._is_pair = is_pair
         self._bilstm = nn.LSTM(input_size=input_size, hidden_size=hidden_size, batch_first=True, bidirectional=True)
 
     def forward(self, inputs: Union[torch.Tensor, Tuple[torch.Tensor, torch.Tensor]]) -> Union[torch.Tensor, Tuple[torch.Tensor, torch.Tensor]]:
-        if self.is_pair:
+        if self._is_pair:
             q1, q2 = inputs
-            output1, (hn1, cn1) = self._bilstm(q1)
-            output2, (hn2, cn2) = self._bilstm(q2)
+            outputs1, _ = self._bilstm(q1)
+            outputs2, _ = self._bilstm(q2)
 
-            hn_cat1 = torch.cat([hn1[0], hn1[1]], dim=1)
-            hn_cat2 = torch.cat([hn2[0], hn2[1]], dim=1)
+            hn_cat1 = torch.cat(outputs1[:, :, :self._hidden_size], outputs1[:, :, self._hidden_size:], dim=2)
+            hn_cat2 = torch.cat(outputs2[:, :, :self._hidden_size], outputs2[:, :, self._hidden_size:], dim=2)
             return hn_cat1, hn_cat2
 
         else:
-            output, (hn, cn) = self._inputs     # hn : hidden state of the last time step
-            hn_cat = torch.cat([hn[0], hn[1]], dim=1)
-            return hn_cat  # output shape: Batch x (Hidden_dim * 2)
+            outputs, _ = self._inputs     # outputs : batch, seq_len, num_directions * hidden_size)
+            hn_cat = torch.cat(outputs[:,:,:self._hidden_size], outputs[:,:,self._hidden_size:], dim=2)
+            return hn_cat  # output shape: Batch x seq_len x (Hidden_dim * 2)
 
+class SelfAttention(nn.Module):
+    """ class for self attention """
+    def __init__(self, in_features, hidden_units, hops, is_pair:bool=True) -> None:
+        self._is_pair = is_pair
+        self._linear_1 = nn.Linear(in_features=in_features, out_features=hidden_units)
+        self._linear_2 = nn.Linear(in_features=hidden_units, out_features=hops)
+
+    def forward(self, inputs: Union[torch.Tensor, Tuple[torch.Tensor, torch.Tensor]]) -> Union[torch.Tensor, Tuple[torch.Tensor, torch.Tensor]]:
+        if self._is_pair:
+            q1, q2 = inputs  # batch x 2u x n
+            q1_weights = F.softmax(self._linear_2(F.tanh(self._linear_1(q1))), dim=-1)  # batch x r x n (seq_len)
+            q2_weights = F.softmax(self._linear_2(F.tanh(self._linear_1(q2))), dim=-1)
+            q1_representations = torch.matmul()
+
+        else:
+            weights =  F.softmax(self._linear_2(F.tanh(self._linear_1(inputs))), dim=-1)
