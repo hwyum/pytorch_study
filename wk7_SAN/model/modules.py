@@ -35,8 +35,21 @@ class BiLSTM(nn.Module):
     def __init__(self, input_size, hidden_size, is_pair:bool) -> None:
         """ initialization of BiLSTM class """
         super(BiLSTM, self).__init__()
+        self.is_pair = is_pair
         self._bilstm = nn.LSTM(input_size=input_size, hidden_size=hidden_size, batch_first=True, bidirectional=True)
 
     def forward(self, inputs: Union[torch.Tensor, Tuple[torch.Tensor, torch.Tensor]]) -> Union[torch.Tensor, Tuple[torch.Tensor, torch.Tensor]]:
+        if self.is_pair:
+            q1, q2 = inputs
+            output1, (hn1, cn1) = self._bilstm(q1)
+            output2, (hn2, cn2) = self._bilstm(q2)
 
+            hn_cat1 = torch.cat([hn1[0], hn1[1]], dim=1)
+            hn_cat2 = torch.cat([hn2[0], hn2[1]], dim=1)
+            return hn_cat1, hn_cat2
+
+        else:
+            output, (hn, cn) = self._inputs     # hn : hidden state of the last time step
+            hn_cat = torch.cat([hn[0], hn[1]], dim=1)
+            return hn_cat  # output shape: Batch x (Hidden_dim * 2)
 
