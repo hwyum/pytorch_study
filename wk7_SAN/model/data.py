@@ -7,10 +7,11 @@ from typing import Tuple
 
 class QuestionPair():
     """ Korean Question Pair Dataset """
-    def __init__(self, datapath:str, vocab:nlp.Vocab, tokenizer: Mecab) -> None:
+    def __init__(self, datapath:str, vocab:nlp.Vocab, tokenizer: Mecab, padder: nlp.data.PadSequence) -> None:
         self.df = pd.read_csv(datapath, sep='\t')
         self.vocab = vocab
         self.tokenizer = tokenizer
+        self.padder = padder
 
     def __len__(self) -> int :
         """ return dataset length """
@@ -21,8 +22,8 @@ class QuestionPair():
         q2 = self.df.iloc[idx].question2
         label = self.df.iloc[idx].is_duplicate
 
-        q1_tokenized_toidx = [self.vocab.token_to_idx[token] for token in self.tokenizer.morphs(q1)]
-        q2_tokenized_toidx = [self.vocab.token_to_idx[token] for token in self.tokenizer.morphs(q2)]
+        q1_tokenized_toidx = [self.vocab.token_to_idx[token] for token in self.padder(self.tokenizer.morphs(q1))]
+        q2_tokenized_toidx = [self.vocab.token_to_idx[token] for token in self.padder(self.tokenizer.morphs(q2))]
 
         sample = (torch.tensor(q1_tokenized_toidx), torch.tensor(q2_tokenized_toidx), label)
 
