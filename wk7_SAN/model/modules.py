@@ -79,6 +79,20 @@ class SelfAttention(nn.Module):
             return representations
 
 
+class BatchMM(nn.Module):
+    """ class for calculating Batch Dot Product
+    to implement F_h = batcheddot(M_h, W_fh)
+    """
+    def __init__(self) -> None:
+        super(BatchMM, self).__init__()
+
+        self._W_fh = nn.Linear()
+
+
+    def forward(self, *input):
+
+
+
 class Permute(nn.Module):
     """ puermutation """
     def __init__(self) -> None:
