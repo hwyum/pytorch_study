@@ -81,7 +81,7 @@ def penalty(attn_mtx: torch.Tensor, hops: int, coefficient, dev):
 
 
 def train(cfgpath):
-    """ Training ConvRec Model with Naver Movie Dataset"""
+    """ Training SAN Model with Korean Question Pairs Dataset"""
 
     # config file parsing
     with open(cfgpath) as io:
