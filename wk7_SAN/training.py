@@ -19,10 +19,8 @@ from tensorboardX import SummaryWriter
 from konlpy.tag import Mecab
 import pickle
 
-# cfgpath = 'config.json'
 
-
-def loss_batch(model, attn_hops, loss_func, q1, q2, yb, opt):
+def loss_batch(model, attn_hops, loss_func, q1, q2, yb, opt, dev):
     inputs = (q1, q2)
     outputs = None
     attn_mtx_1 = None
@@ -32,19 +30,29 @@ def loss_batch(model, attn_hops, loss_func, q1, q2, yb, opt):
         outputs = layer(inputs)
         inputs = outputs
 
-        # print(j, type(layer))
+        # extract attn_mtx
         if isinstance(layer, SelfAttention):
             # print('here')
             attn_mtx_1 = outputs[1][0]
             attn_mtx_2 = outputs[1][1]
 
-    loss = loss_func(outputs, yb) + penalty(attn_mtx_1, attn_hops, 0.3) + penalty(attn_mtx_2, attn_hops, 0.3)
-    loss.backward()  ## backprop
+    # loss with penalty term
+    loss = loss_func(outputs, yb) + penalty(attn_mtx_1, attn_hops, 0.3, dev) + penalty(attn_mtx_2, attn_hops, 0.3, dev)
+    loss.backward()  # backprop
     # torch.nn.utils.clip_grad_norm_(model.parameters(), 5, norm_type=2)  # gradient clipping
-    opt.step()  ## weight update
-    opt.zero_grad()  ## gradient initialize
+    opt.step()  # weight update
+    opt.zero_grad()  # gradient initialize
 
     return loss.item(), outputs
+
+
+def accuracy_batch(outputs, yb):
+    # accuracy calculation
+    _, predicted = torch.max(outputs, 1)
+    correct = torch.sum((yb == predicted)).item()
+    num_yb = len(yb)
+
+    return correct, num_yb
 
 
 def evaluate(model, loss_func, dataloader, dev):
@@ -67,15 +75,6 @@ def evaluate(model, loss_func, dataloader, dev):
         avg_loss /= (step+1)
         accuracy = correct / num_yb
     return avg_loss, accuracy
-
-
-def accuracy_batch(outputs, yb):
-    # accuracy calculation
-    _, predicted = torch.max(outputs, 1)
-    correct = torch.sum((yb == predicted)).item()
-    num_yb = len(yb)
-
-    return correct, num_yb
 
 
 def penalty(attn_mtx: torch.Tensor, hops: int, coefficient, dev):
@@ -112,9 +111,6 @@ def train(cfgpath):
     fc_hidden = params['model'].get('fc_hidden')
     model = SAN(num_embedding, embedding_dim, lstm_hidden, attn_hidden, attn_hops, fc_hidden, class_num)
 
-
-    # print(model)
-
     # Build Data Loader
     tr_path = params['filepath'].get('tr')
     val_path = params['filepath'].get('val')
@@ -123,39 +119,9 @@ def train(cfgpath):
     tr_dl = DataLoader(tr_ds, batch_size=params['training'].get('batch_size'), shuffle=True, drop_last=True)
     val_dl = DataLoader(val_ds, batch_size=params['training'].get('batch_size') * 2, drop_last=False)
 
-    # # ----------- test --------------- #
-    #
-    # for i, inputs in enumerate(tr_dl):
-    #     if i > 0: break
-    #     q1, q2, label = inputs
-    #     inputs = (q1, q2)
-    #     for j, layer in enumerate(list(model.children())[0]):
-    #         outputs = layer(inputs)
-    #         inputs = outputs
-    #         print(j, type(layer))
-    #         if isinstance(layer, SelfAttention):
-    #             print('here')
-    #             print(outputs[1][0].shape, outputs[1][1].shape)
-    #             attn_mat_1 = outputs[1][0]
-    #             attn_mat_2 = outputs[1][1]
-    #
-    #     # output = model((q1, q2))
-    #
-    #
-    # print(outputs.size())    # batch x 2
-    #
-    # exit(-1)
-    #
-    # # -------------------------------- #
-
     # loss function and optimization
     loss_func = F.cross_entropy
     opt = optim.Adam(model.parameters(), lr=params['training'].get('learning_rate'))
-#     opt = optim.Adadelta(model.parameters(), lr=params['training'].get('learning_rate'), rho=0.95, eps=1e-5)
-
-    # Adjust learning rate (참고: torch.optim.lr_scheduler)
-#     scheduler = torch.optim.lr_scheduler.StepLR(opt, step_size=3, gamma=0.5, last_epoch=-1)
-    epochs = params['training'].get('epochs')
 
     # GPU Setting
     dev = torch.device("cuda") if torch.cuda.is_available() else torch.device("cpu")
@@ -165,38 +131,39 @@ def train(cfgpath):
     writer = SummaryWriter(log_dir='./runs/exp')
 
     # Training
+    epochs = params['training'].get('epochs')
     for epoch in tqdm(range(epochs), desc='Epoch'):
 
         model.train()
-#         scheduler.step()
         avg_tr_loss = 0
-        tr_correct = 0
+        tr_accuracy = 0
         tr_num_yb = 0
 
         for step, mb in enumerate(tqdm(tr_dl, desc='Training')):
             q1, q2, yb = map(lambda x: x.to(dev), mb)
-            loss, outputs = loss_batch(model, attn_hops, loss_func, q1, q2, yb, opt)
+            loss, outputs = loss_batch(model, attn_hops, loss_func, q1, q2, yb, opt, dev)
             avg_tr_loss += loss
 
             # training accuracy
             _correct, _num_yb = accuracy_batch(outputs, yb)
-            tr_correct += _correct
+            tr_accuracy += _correct
             tr_num_yb += _num_yb
 
+            # tensorboard write
             if epoch > 0 and (epoch * len(tr_dl) + step) % 500 == 0:
                 val_loss, _ = evaluate(model, loss_func, val_dl, dev)
                 writer.add_scalars('losses', {'tr_loss':avg_tr_loss/(step+1),
-                                              'val_loss':val_loss}, epoch * len(tr_dl) + step )
+                                              'val_loss':val_loss}, epoch * len(tr_dl) + step)
                 model.train()
         else:
             avg_tr_loss /= (step+1)
-            tr_correct /= tr_num_yb
+            tr_accuracy /= tr_num_yb
 
         model.eval()
         avg_val_loss, accuracy = evaluate(model, loss_func, val_dl, dev)
 
         print('Epoch: {}, training loss: {:.3f}, validation loss: {:.3f}, training accuracy: {:.3f}, validation accuracy: {:.3f}'
-              .format(epoch, avg_tr_loss, avg_val_loss, tr_correct, accuracy))
+              .format(epoch, avg_tr_loss, avg_val_loss, tr_accuracy, accuracy))
 
     ckpt = {'epoch': epochs,
             'model_state_dict': model.state_dict(),
@@ -205,14 +172,6 @@ def train(cfgpath):
     torch.save(ckpt, savepath)
     writer.close()
 
-
-
-
-
-
-
-
-# train('./config.json')
 
 if __name__ == '__main__':
     fire.Fire(train)
