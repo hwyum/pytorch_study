@@ -22,5 +22,5 @@ pytorch study code
 * Reference: [Efficient Character-level Document Classification by Combining Convolution and Recurrent Layers](https://arxiv.org/abs/1602.00367)
 
 **7. wk7: Q-Q Similarity with SAN**
-* Dataset: [Korean Question Pair Dataset (by songys)] (https://github.com/songys/Question_pair)
+* Dataset: [Korean Question Pair Dataset (by songys)](https://github.com/songys/Question_pair)
 * Reference: [A Structured Self-attentive Sentence Embedding (2017)](https://arxiv.org/abs/1703.03130) 
