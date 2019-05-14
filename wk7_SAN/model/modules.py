@@ -63,8 +63,8 @@ class SelfAttention(nn.Module):
         if self._is_pair:
             q1_hn, q2_hn = inputs  # batch x n x 2u
 
-            q1_weights = F.softmax(self._linear_2(F.tanh(self._linear_1(q1_hn))), dim=1)  # batch x n x r
-            q2_weights = F.softmax(self._linear_2(F.tanh(self._linear_1(q2_hn))), dim=1)
+            q1_weights = F.softmax(self._linear_2(torch.tanh(self._linear_1(q1_hn))), dim=1)  # batch x n x r
+            q2_weights = F.softmax(self._linear_2(torch.tanh(self._linear_1(q2_hn))), dim=1)
 
             q1_weights = q1_weights.permute(0, 2, 1)  # batch x r x n
             q2_weights = q2_weights.permute(0, 2, 1)  # batch x r x n
@@ -98,10 +98,10 @@ class WeightedHidden(nn.Module):
             # print("\tweights_size:{}".format(q1_weights.size()))
             # print("\thn_size:{}".format(q1_hn.size()))
 
-            q1_representations = torch.bmm(q1_weights, q1_hn)   # batch x r x 2u
-            q2_representations = torch.bmm(q2_weights, q2_hn)
+            q1_embedding = torch.bmm(q1_weights, q1_hn)   # batch x r x 2u
+            q2_embedding = torch.bmm(q2_weights, q2_hn)
 
-            return q1_representations, q2_representations
+            return q1_embedding, q2_embedding
 
         else:
             hn = inputs[0]
@@ -112,14 +112,44 @@ class WeightedHidden(nn.Module):
 
 
 class GatedEncoder(nn.Module):
-    """ class for Gated Encoder
-    input shape  : (batch x r x 2u, batch x r x 2u)
-    1) multiply each row in the matrix embedding by a different weight matrix.
-        for each batch, (r x 2u) @ (r x 2u x 2u) => How??
-        (r x 1 x 2u) @ (r x 2u x 2u) = (r x
-    intermediate :
+    """ class for Gated Encoder (only for paired dataset)
+    input matrices  : (batch x r x 2u, batch x r x 2u)
+        1) multiply each row in the matrix embedding by a different weight matrix.
+            for each matrix(M_h or M_p), for each batch, (r x 2u) @ (2u x 2u) => (r x 2u)
+            output matrices : F_h, F_p
+        2) Element-wise product of F_h and F_p
+    output : (batch x r x 2u)
     """
-    def __init__(self):
+    def __init__(self, lstm_hidden) -> None:
         super(GatedEncoder, self).__init__()
+        self._w1 = nn.Parameter(torch.randn((2 * lstm_hidden, 2 * lstm_hidden)), requires_grad=True)
+        self._w2 = nn.Parameter(torch.randn((2 * lstm_hidden, 2 * lstm_hidden)), requires_grad=True)
 
-    def forward(self, *input) -> torch.Tensor:
+    def forward(self, inputs: Tuple[torch.Tensor, torch.Tensor]) -> torch.Tensor:
+        q1_embedding, q2_embedding = inputs  # batch x r x 2u
+        f1 = q1_embedding @ self._w1    # batch x r x 2u
+        f2 = q2_embedding @ self._w2    # batch x r x 2u
+        fr = f1 * f2    # batch x r x 2u (element-wise product)
+        return fr
+
+
+class Classifier(nn.Module):
+    """ calss for Classification """
+    def __init__(self, lstm_hidden, hops, fc_hidden, class_num) -> None:
+        super(Classifier, self).__init__()
+        self._linear_1 = nn.Linear(in_features=hops * 2 * lstm_hidden, out_features=fc_hidden)
+        self._linear_2 = nn.Linear(in_features=fc_hidden, out_features=class_num)
+
+    def forward(self, input: torch.Tensor) -> torch.Tensor:
+        fc_out_1 = F.relu(self._linear_1(input))
+        fc_out_2 = self._linear_2(fc_out_1)
+        return fc_out_2
+
+
+class Flatten(nn.Module):
+    """ flattening output to feed into FC layers"""
+    def __init__(self):
+        super(Flatten, self).__init__()
+
+    def forward(self, input: torch.Tensor) -> torch.Tensor:
+        return torch.flatten(input, start_dim=1)
