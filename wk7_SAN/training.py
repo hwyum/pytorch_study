@@ -1,9 +1,3 @@
-# import sys
-# sys.path.append('/Users/haewonyum/Google 드라이브/Colab Notebooks/Pytorch_study/wk7_SAN')
-#
-# import os
-# os.chdir('/Users/haewonyum/Google 드라이브/Colab Notebooks/Pytorch_study/wk7_SAN')
-
 import torch
 import torch.nn.functional as F
 from torch import optim
