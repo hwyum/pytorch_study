@@ -17,8 +17,8 @@ data_df.is_duplicate = data_df.is_duplicate.map(lambda x: 1-x)  # is_duplicate ë
 train_df, val_df = train_test_split(data_df, test_size=0.2)
 
 # save train / validation data
-train_df.to_csv(Path(data_root) / 'tr_pairs.txt', index=False, sep='\t')
-val_df.to_csv(os.path.join(data_root, 'val_pairs.txt'), index=False, sep='\t')
+train_df.to_csv(Path(data_root) / 'tr_pairs.csv', index=False)
+val_df.to_csv(Path(data_root) / 'val_pairs.csv', index=False)
 
 # build vocab
 tokenizer = Mecab()
@@ -32,3 +32,9 @@ vocab = nlp.Vocab(counter=counter, min_freq=10)
 vocab_path = Path(data_root) / 'vocab.pkl'
 with open(vocab_path, mode='wb') as io:
     pickle.dump(vocab, io)
+
+# save test data
+test_path = Path(data_root) / 'kor_Pair_test.csv'
+test_df = pd.read_csv(test_path)[['question1','question2','is_duplicate']]
+test_df.is_duplicate = data_df.is_duplicate.map(lambda x: 1-x)
+test_df.to_csv(Path(data_root) / 'tst_pairs.csv', index=False)
