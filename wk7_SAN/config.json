@@ -1,0 +1,19 @@
+{
+  "filepath": {"tr": "./data/tr_pairs.csv",
+               "val": "./data/val_pairs.csv",
+               "tst": "./data/tst_pairs.csv",
+               "vocab": "./data/vocab.pkl",
+               "ckpt": "./checkpoint/model_ckpt.tar"},
+
+  "model": {"embedding_dim": 16,
+            "num_classes":  2,
+            "lstm_hidden": 300,
+            "attn_hidden": 150,
+            "attn_hops": 30,
+            "fc_hidden": 4000
+            },
+
+  "training": {"epochs": 10,
+               "batch_size": 128,
+               "learning_rate": 3e-4}
+}
