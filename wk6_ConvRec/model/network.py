@@ -25,7 +25,7 @@ class ConvRec(nn.Module):
         self._ops = nn.Sequential(Embedding(num_embedding, embedding_dim),  # output_shape : NLC
                                   Permute(),   # output_shape : NCL
                                   *self._convLayers,  # output_shape : NCL
-                                  Dropout(),
+                                  # Dropout(),
                                   Permute(),  # batch x channel x length -> batch x length x channel
                                   Pack_padded_seq(),
                                   RecLayer(conv_out_channels[-1], hidden_size),  # output_shape : NLC
