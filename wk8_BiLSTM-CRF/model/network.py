@@ -1,24 +1,30 @@
 import torch
 import torch.nn as nn
 from utils import argmax, log_sum_exp
+import mxnet
+import gluonnlp as nlp
+from typing import Dict
 
 
 START_TAG = "<START>"
 STOP_TAG = "<STOP>"
+BATCH_SIZE = 128
 
 class BiLSTM_CRF(nn.Module):
 
-    def __init__(self, vocab_size, tag_to_ix, embedding_dim, hidden_dim):
+    def __init__(self, vocab:nlp.Vocab, tag_to_ix:Dict, embedding_dim:int, hidden_dim:int):
         super(BiLSTM_CRF, self).__init__()
         self.embedding_dim = embedding_dim
         self.hidden_dim = hidden_dim
-        self.vocab_size = vocab_size
+        self.vocab_size = len(vocab.token_to_idx)
         self.tag_to_ix = tag_to_ix
         self.tagset_size = len(tag_to_ix)
 
-        self.word_embeds = nn.Embedding(vocab_size, embedding_dim)
+        # nn.Embedding.from_pretrained(torch.from_numpy(vocab.embedding.idx_to_vec.asnumpy()), freeze=freeze,
+        #                              padding_idx=self._padding_idx)
+        self.word_embeds = nn.Embedding.from_pretrained(torch.from_numpy(vocab.embedding.idx_to_vec.asnumpy()),freeze=True)
         self.lstm = nn.LSTM(embedding_dim, hidden_dim // 2,
-                            num_layers=1, bidirectional=True)
+                            num_layers=1, bidirectional=True, batch_first=True)
 
         # Maps the output of the LSTM into tag space.
         self.hidden2tag = nn.Linear(hidden_dim, self.tagset_size)   #
@@ -36,60 +42,73 @@ class BiLSTM_CRF(nn.Module):
         self.hidden = self.init_hidden()
 
     def init_hidden(self):
-        return (torch.randn(2, 1, self.hidden_dim // 2),
-                torch.randn(2, 1, self.hidden_dim // 2))
+        return (torch.randn(2, BATCH_SIZE, self.hidden_dim // 2),
+                torch.randn(2, BATCH_SIZE, self.hidden_dim // 2))
 
-    def _forward_alg(self, feats):  # fetures from LSTM: seq_len x tag_size
+    def _forward_alg(self, feats):  # fetures from LSTM: batch x seq_len x tag_size
         # Do the forward algorithm to compute the partition function
-        init_alphas = torch.full((1, self.tagset_size), -10000.)
+        init_alphas = torch.full((BATCH_SIZE, self.tagset_size), -10000.)  # B x tag_size
         # START_TAG has all of the score.
-        init_alphas[0][self.tag_to_ix[START_TAG]] = 0.
+        init_alphas[:,self.tag_to_ix[START_TAG]] = 0.
 
         # Wrap in a variable so that we will get automatic backprop
-        forward_var = init_alphas
+        forward_var = init_alphas  # [B, C]
+        transitions = self.transitions.unsqueeze(0)  # 1 x C x C
 
-        # Iterate through the sentence
-        for feat in feats:  # feat : (tag_size, )
-            alphas_t = []  # The forward tensors at this timestep
-            for next_tag in range(self.tagset_size):
-                # broadcast the emission score: it is the same regardless of
-                # the previous tag
-                # The emission potential for the word at index i comes
-                # from the hidden state of the Bi-LSTM at timestep i
-                emit_score = feat[next_tag].view(
-                    1, -1).expand(1, self.tagset_size)
-                # the ith entry of trans_score is the score of transitioning to
-                # next_tag from i
-                trans_score = self.transitions[next_tag].view(1, -1)
-                # The ith entry of next_tag_var is the value for the
-                # edge (i -> next_tag) before we do log-sum-exp
-                next_tag_var = forward_var + trans_score + emit_score
-                # The forward variable for this tag is log-sum-exp of all the
-                # scores.
-                alphas_t.append(log_sum_exp(next_tag_var).view(1))
-            forward_var = torch.cat(alphas_t).view(1, -1)
+        for t in range(feats.size(1)):  # recursion through the seq
+            emit_score = feats[:,t].unsqueeze(2)  # B x C x 1
+            next_tag_var = forward_var.unsqueeze(1) + emit_score + transitions # [B, 1, C] -> [B, C, C]
+            forward_var = log_sum_exp(next_tag_var)  # [B, C, C] -> [B, C]
         terminal_var = forward_var + self.transitions[self.tag_to_ix[STOP_TAG]]
         alpha = log_sum_exp(terminal_var)
         return alpha
 
+        # # Iterate through the sentence
+        # for i, feat in enumerate(feats):  # feat : (seq_len, tag_size)
+        #     alphas_t = []  # The forward tensors at this timestep
+        #     for next_tag in range(self.tagset_size):
+        #         # broadcast the emission score: it is the same regardless of the previous tag
+        #         # The emission potential for the word at index i comes
+        #         # from the hidden state of the Bi-LSTM at timestep i
+        #         emit_score = feat[next_tag].view(1, -1).expand(1, self.tagset_size)  # (1 x tag_size)
+        #         # the ith entry of trans_score is the score of transitioning to next_tag from i
+        #         trans_score = self.transitions[next_tag].view(1, -1)  # (1 x tag_size)
+        #         # The ith entry of next_tag_var is the value for the
+        #         # edge (i -> next_tag) before we do log-sum-exp
+        #         next_tag_var = forward_var[i] + trans_score + emit_score  # 다음 테그로 갈 확률
+        #         # The forward variable for this tag is log-sum-exp of all the scores.
+        #         alphas_t.append(log_sum_exp(next_tag_var).view(1))  # alphas_t: tag_size길이의 List
+        #     forward_var[i] = torch.cat(alphas_t).view(1, -1)  # (1 x tag_size)
+        # terminal_var = forward_var + self.transitions.unsqueeze(0)[:, self.tag_to_ix[STOP_TAG]]
+        # alpha = log_sum_exp(terminal_var)
+        # return alpha
+
     def _get_lstm_features(self, sentence):
         self.hidden = self.init_hidden()
-        embeds = self.word_embeds(sentence).view(len(sentence), 1, -1)
+        #embeds = self.word_embeds(sentence).view(len(sentence), 1, -1)
+        embeds = self.word_embeds(sentence)  # batch x seq_len x embed_dim
         # embeds shape: seq_len x 1 x embed_dim
         lstm_out, self.hidden = self.lstm(embeds, self.hidden)
-        # lstm_out : seq_len x 1 x hidden_dim
-        # hidden : [(2 x 1 x hidden_dim//2), (2 x 1 x hidden_dim//2)]
-        lstm_out = lstm_out.view(len(sentence), self.hidden_dim)  # seq_len x hidden_dim
-        lstm_feats = self.hidden2tag(lstm_out)  # seq_len x tag_size
+        # lstm_out : batch x seq_len x hidden_dim
+        # hidden : [(2 x batch x hidden_dim//2), (2 x batch x hidden_dim//2)]
+        # lstm_out = lstm_out.view(len(sentence), self.hidden_dim)  # seq_len x hidden_dim
+        lstm_feats = self.hidden2tag(lstm_out)  # batch x seq_len x tag_size
         return lstm_feats
 
     def _score_sentence(self, feats, tags):
         # Gives the score of a provided tag sequence
-        score = torch.zeros(1)
-        tags = torch.cat([torch.tensor([self.tag_to_ix[START_TAG]], dtype=torch.long), tags])
-        for i, feat in enumerate(feats):
-            score = score + \
-                self.transitions[tags[i + 1], tags[i]] + feat[tags[i + 1]]
+        score = torch.zeros(BATCH_SIZE)
+        tags = torch.cat([torch.tensor([self.tag_to_ix[START_TAG]], dtype=torch.long).expand(BATCH_SIZE).view(-1,1)
+                             , tags], dim=1)  # [B, (L+1)]
+
+        feats = feats.unsqueeze(3)  # [B, L, C, 1]
+        transitions = self.transitions.unsqueeze(2)  # [C, C, 1]
+        # for t in range(feats.size(1)):  # recursion through the sequence
+        #     emit_score = torch.cat([feats[t, tags[t+1]] for feats, tags in zip(feats, tags)])
+
+        # tags = torch.cat([torch.tensor([self.tag_to_ix[START_TAG]], dtype=torch.long), tags])
+        for i in range(feats.size(1)):
+            score = score + transitions[tags[i + 1], tags[i]] + feats[:, tags[i + 1]]
         score = score + self.transitions[self.tag_to_ix[STOP_TAG], tags[-1]]
         return score
 

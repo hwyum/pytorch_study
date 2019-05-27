@@ -1,0 +1,16 @@
+{
+  "filepath": {"tr": "./data/tr_data.txt",
+               "val": "./data/val_data.txt",
+               "tst": "./data/tst_data.txt",
+               "vocab": "./data/vocab.pkl",
+               "vocab_tag": "./data/vocab_tag.pkl",
+               "ckpt": "./checkpoint/model_ckpt.tar"},
+
+  "model": {"embedding_dim": 16,
+            "hidden_dim": 300
+            },
+
+  "training": {"epochs": 10,
+               "batch_size": 128,
+               "learning_rate": 3e-4}
+}
