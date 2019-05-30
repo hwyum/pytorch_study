@@ -17,14 +17,15 @@ class NER_data(Dataset):
         """ return dataset length """
         return len(self.data)
 
-    def __getitem__(self, idx) -> Tuple[torch.Tensor, torch.Tensor]:
-        """ return preprocessed idx_th data in form of (setence, tags) """
+    def __getitem__(self, idx) -> Tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
+        """ return preprocessed idx_th data in form of (setence, tags, length) """
         sentence = self.data.iloc[idx].sentence.split()
         tags = self.data.iloc[idx].tags.split()
         sentence_to_idx = [self.vocab[word] for word in sentence]
         tags_to_idx = [self.tag_to_ix[tag] for tag in tags]
+        length = len(sentence)
 
-        return torch.tensor(sentence_to_idx), torch.tensor(tags_to_idx)
+        return torch.tensor(sentence_to_idx), torch.tensor(tags_to_idx), torch.tensor(length)
 
 
 

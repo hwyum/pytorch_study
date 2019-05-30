@@ -45,15 +45,24 @@ class BiLSTM_CRF(nn.Module):
         return (torch.randn(2, BATCH_SIZE, self.hidden_dim // 2),
                 torch.randn(2, BATCH_SIZE, self.hidden_dim // 2))
 
-    def _forward_alg(self, feats):  # fetures from LSTM: batch x seq_len x tag_size
+    def _forward_alg(self, feats, lens):  # fetures from LSTM: batch x seq_len x tag_size
+        # ref: https://github.com/kaniblu/pytorch-bilstmcrf/blob/master/model.py
         # Do the forward algorithm to compute the partition function
-        init_alphas = torch.full((BATCH_SIZE, self.tagset_size), -10000.)  # B x tag_size
+        batch_size, seq_len, tag_size = feats.size()
+        init_alphas = torch.full((batch_size, tag_size), -10000.)  # B x tag_size
         # START_TAG has all of the score.
         init_alphas[:,self.tag_to_ix[START_TAG]] = 0.
 
         # Wrap in a variable so that we will get automatic backprop
         forward_var = init_alphas  # [B, C]
         transitions = self.transitions.unsqueeze(0)  # 1 x C x C
+        c_lens = lens.clone()
+
+        feats_t = feats.transpose(1,0)  # seq_len x batch x tag_size
+        for feat in feats_t:    # recursion through the seq
+            feat_exp = feat.unsqueeze(-1)
+
+
 
         for t in range(feats.size(1)):  # recursion through the seq
             emit_score = feats[:,t].unsqueeze(2)  # B x C x 1

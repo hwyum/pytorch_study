@@ -24,10 +24,11 @@ def log_sum_exp(x):
     m = torch.max(x, -1)[0]
     return m + torch.log(torch.sum(torch.exp(x - m.unsqueeze(-1)), -1))
 
-def collate_fn(inputs: List[Tuple[torch.Tensor, torch.Tensor]]) -> Tuple[torch.Tensor, torch.Tensor]:
-    sentence, tags = list(zip(*inputs))
+
+def collate_fn(inputs: List[Tuple[torch.Tensor, torch.Tensor, torch.Tensor]]) -> Tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
+    sentence, tags, length = list(zip(*inputs))
     sentence = pad_sequence(sentence, batch_first=True, padding_value=1)
     tags = pad_sequence(tags, batch_first=True, padding_value=1)
-    return sentence, tags
+    return sentence, tags, length
 
 
