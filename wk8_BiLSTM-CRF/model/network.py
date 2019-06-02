@@ -48,26 +48,20 @@ class BiLSTM_CRF(nn.Module):
     def _forward_alg(self, feats, lens):  # fetures from LSTM: batch x seq_len x tag_size
         # ref: https://github.com/kaniblu/pytorch-bilstmcrf/blob/master/model.py
         # Do the forward algorithm to compute the partition function
-        batch_size, seq_len, tag_size = feats.size()
-        init_alphas = torch.full((batch_size, tag_size), -10000.)  # B x tag_size
+        batch_size, seq_len, target_size = feats.size()
+        init_alphas = torch.full((batch_size, target_size), -10000.)  # B x tag_size
         # START_TAG has all of the score.
-        init_alphas[:,self.tag_to_ix[START_TAG]] = 0.
+        init_alphas[:, self.tag_to_ix[START_TAG]] = 0.
 
         # Wrap in a variable so that we will get automatic backprop
         forward_var = init_alphas  # [B, C]
-        transitions = self.transitions.unsqueeze(0)  # 1 x C x C
-        c_lens = lens.clone()
+        trans = self.transitions.unsqueeze(0)  # 1 x C x C
 
-        feats_t = feats.transpose(1,0)  # seq_len x batch x tag_size
-        for feat in feats_t:    # recursion through the seq
-            feat_exp = feat.unsqueeze(-1)
-
-
-
-        for t in range(feats.size(1)):  # recursion through the seq
-            emit_score = feats[:,t].unsqueeze(2)  # B x C x 1
-            next_tag_var = forward_var.unsqueeze(1) + emit_score + transitions # [B, 1, C] -> [B, C, C]
+        for t in range(seq_len):  # recursion through the seq
+            emit_score = feats[:, t].unsqueeze(2)  # B x C x 1
+            next_tag_var = forward_var.unsqueeze(1) + emit_score + trans  # [B, 1, C] -> [B, C, C]
             forward_var = log_sum_exp(next_tag_var)  # [B, C, C] -> [B, C]
+
         terminal_var = forward_var + self.transitions[self.tag_to_ix[STOP_TAG]]
         alpha = log_sum_exp(terminal_var)
         return alpha
@@ -92,6 +86,7 @@ class BiLSTM_CRF(nn.Module):
         # alpha = log_sum_exp(terminal_var)
         # return alpha
 
+
     def _get_lstm_features(self, sentence):
         self.hidden = self.init_hidden()
         #embeds = self.word_embeds(sentence).view(len(sentence), 1, -1)
@@ -100,24 +95,23 @@ class BiLSTM_CRF(nn.Module):
         lstm_out, self.hidden = self.lstm(embeds, self.hidden)
         # lstm_out : batch x seq_len x hidden_dim
         # hidden : [(2 x batch x hidden_dim//2), (2 x batch x hidden_dim//2)]
-        # lstm_out = lstm_out.view(len(sentence), self.hidden_dim)  # seq_len x hidden_dim
         lstm_feats = self.hidden2tag(lstm_out)  # batch x seq_len x tag_size
         return lstm_feats
 
+    def _score_batch_sentences(self, batch_feats, batch_tags):
+        batch_scores = []
+        for f, t in zip(batch_feats, batch_tags):
+            batch_scores.append(self._score_sentence(f, t))
+
+        return torch.cat(batch_scores)
+
     def _score_sentence(self, feats, tags):
         # Gives the score of a provided tag sequence
-        score = torch.zeros(BATCH_SIZE)
-        tags = torch.cat([torch.tensor([self.tag_to_ix[START_TAG]], dtype=torch.long).expand(BATCH_SIZE).view(-1,1)
-                             , tags], dim=1)  # [B, (L+1)]
+        score = torch.zeros(1)
+        tags = torch.cat([torch.tensor([self.tag_to_ix[START_TAG]], dtype=torch.long), tags])
 
-        feats = feats.unsqueeze(3)  # [B, L, C, 1]
-        transitions = self.transitions.unsqueeze(2)  # [C, C, 1]
-        # for t in range(feats.size(1)):  # recursion through the sequence
-        #     emit_score = torch.cat([feats[t, tags[t+1]] for feats, tags in zip(feats, tags)])
-
-        # tags = torch.cat([torch.tensor([self.tag_to_ix[START_TAG]], dtype=torch.long), tags])
-        for i in range(feats.size(1)):
-            score = score + transitions[tags[i + 1], tags[i]] + feats[:, tags[i + 1]]
+        for i, feat in enumerate(feats):
+            score = score + self.transitions[tags[i + 1], tags[i]] + feats[tags[i + 1]]
         score = score + self.transitions[self.tag_to_ix[STOP_TAG], tags[-1]]
         return score
 
@@ -168,13 +162,22 @@ class BiLSTM_CRF(nn.Module):
     def neg_log_likelihood(self, sentence, tags):
         feats = self._get_lstm_features(sentence)  # seq_len x tag_size
         forward_score = self._forward_alg(feats)
-        gold_score = self._score_sentence(feats, tags)
-        return forward_score - gold_score
+        gold_score = self._score_batch_sentences(feats, tags)
+        return torch.mean(forward_score - gold_score)
 
     def forward(self, sentence):  # dont confuse this with _forward_alg above.
         # Get the emission scores from the BiLSTM
         lstm_feats = self._get_lstm_features(sentence)
 
+        scores, tag_seqs = [], []
         # Find the best path, given the features.
-        score, tag_seq = self._viterbi_decode(lstm_feats)
-        return score, tag_seq
+        for feat in lstm_feats:
+            score, tag_seq = self._viterbi_decode(feat)
+            scores.append(score)
+            tag_seqs.append(tag_seq)
+
+        scores = torch.stack(scores)
+        tag_seqs = torch.stack(tag_seqs)
+
+        return scores, tag_seqs
+

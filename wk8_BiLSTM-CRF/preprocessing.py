@@ -12,7 +12,7 @@ import pickle
 
 
 data_root = './data'
-data = pd.read_csv('./data/train_data', sep=' |\t', header=None)
+data = pd.read_csv('./data/train_data.txt', sep=' |\t', header=None)
 data.columns = ['idx', 'word', 'tag']
 
 # 문장단위 데이터로 정리
