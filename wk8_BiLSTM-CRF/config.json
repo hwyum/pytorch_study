@@ -6,11 +6,11 @@
                "vocab_tag": "./data/vocab_tag.pkl",
                "ckpt": "./checkpoint/model_ckpt.tar"},
 
-  "model": {"embedding_dim": 16,
+  "model": {"embedding_dim": 300,
             "hidden_dim": 300
             },
 
-  "training": {"epochs": 10,
-               "batch_size": 128,
-               "learning_rate": 3e-4}
+  "training": {"epochs": 2,
+               "batch_size": 32,
+               "learning_rate": 1e-4}
 }
