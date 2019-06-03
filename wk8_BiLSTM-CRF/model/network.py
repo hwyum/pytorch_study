@@ -20,8 +20,6 @@ class BiLSTM_CRF(nn.Module):
         self.tag_to_ix = tag_to_ix
         self.tagset_size = len(tag_to_ix)
 
-        # nn.Embedding.from_pretrained(torch.from_numpy(vocab.embedding.idx_to_vec.asnumpy()), freeze=freeze,
-        #                              padding_idx=self._padding_idx)
         self.word_embeds = nn.Embedding.from_pretrained(torch.from_numpy(vocab.embedding.idx_to_vec.asnumpy()),freeze=True)
         self.lstm = nn.LSTM(embedding_dim, hidden_dim // 2,
                             num_layers=1, bidirectional=True, batch_first=True)
@@ -39,13 +37,13 @@ class BiLSTM_CRF(nn.Module):
         self.transitions.data[tag_to_ix[START_TAG], :] = -10000
         self.transitions.data[:, tag_to_ix[STOP_TAG]] = -10000
 
-        self.hidden = self.init_hidden()
+        #self.hidden = self.init_hidden()
 
-    def init_hidden(self):
-        return (torch.randn(2, BATCH_SIZE, self.hidden_dim // 2),
-                torch.randn(2, BATCH_SIZE, self.hidden_dim // 2))
+    def init_hidden(self, batch_size):
+        return (torch.randn(2, batch_size, self.hidden_dim // 2),
+                torch.randn(2, batch_size, self.hidden_dim // 2))
 
-    def _forward_alg(self, feats, lens):  # fetures from LSTM: batch x seq_len x tag_size
+    def _forward_alg(self, feats):  # fetures from LSTM: batch x seq_len x tag_size
         # ref: https://github.com/kaniblu/pytorch-bilstmcrf/blob/master/model.py
         # Do the forward algorithm to compute the partition function
         batch_size, seq_len, target_size = feats.size()
@@ -66,29 +64,10 @@ class BiLSTM_CRF(nn.Module):
         alpha = log_sum_exp(terminal_var)
         return alpha
 
-        # # Iterate through the sentence
-        # for i, feat in enumerate(feats):  # feat : (seq_len, tag_size)
-        #     alphas_t = []  # The forward tensors at this timestep
-        #     for next_tag in range(self.tagset_size):
-        #         # broadcast the emission score: it is the same regardless of the previous tag
-        #         # The emission potential for the word at index i comes
-        #         # from the hidden state of the Bi-LSTM at timestep i
-        #         emit_score = feat[next_tag].view(1, -1).expand(1, self.tagset_size)  # (1 x tag_size)
-        #         # the ith entry of trans_score is the score of transitioning to next_tag from i
-        #         trans_score = self.transitions[next_tag].view(1, -1)  # (1 x tag_size)
-        #         # The ith entry of next_tag_var is the value for the
-        #         # edge (i -> next_tag) before we do log-sum-exp
-        #         next_tag_var = forward_var[i] + trans_score + emit_score  # 다음 테그로 갈 확률
-        #         # The forward variable for this tag is log-sum-exp of all the scores.
-        #         alphas_t.append(log_sum_exp(next_tag_var).view(1))  # alphas_t: tag_size길이의 List
-        #     forward_var[i] = torch.cat(alphas_t).view(1, -1)  # (1 x tag_size)
-        # terminal_var = forward_var + self.transitions.unsqueeze(0)[:, self.tag_to_ix[STOP_TAG]]
-        # alpha = log_sum_exp(terminal_var)
-        # return alpha
-
 
     def _get_lstm_features(self, sentence):
-        self.hidden = self.init_hidden()
+        batch_size = sentence.size(0)
+        self.hidden = self.init_hidden(batch_size)
         #embeds = self.word_embeds(sentence).view(len(sentence), 1, -1)
         embeds = self.word_embeds(sentence)  # batch x seq_len x embed_dim
         # embeds shape: seq_len x 1 x embed_dim
@@ -111,9 +90,9 @@ class BiLSTM_CRF(nn.Module):
         tags = torch.cat([torch.tensor([self.tag_to_ix[START_TAG]], dtype=torch.long), tags])
 
         for i, feat in enumerate(feats):
-            score = score + self.transitions[tags[i + 1], tags[i]] + feats[tags[i + 1]]
+            score = score + self.transitions[tags[i + 1], tags[i]] + feat[tags[i + 1]]
         score = score + self.transitions[self.tag_to_ix[STOP_TAG], tags[-1]]
-        return score
+        return score    # tag_size
 
     def _viterbi_decode(self, feats):
         backpointers = []
@@ -160,10 +139,11 @@ class BiLSTM_CRF(nn.Module):
         return path_score, best_path
 
     def neg_log_likelihood(self, sentence, tags):
-        feats = self._get_lstm_features(sentence)  # seq_len x tag_size
-        forward_score = self._forward_alg(feats)
-        gold_score = self._score_batch_sentences(feats, tags)
-        return torch.mean(forward_score - gold_score)
+        feats = self._get_lstm_features(sentence)  # batch x seq_len x tag_size
+        forward_score = self._forward_alg(feats)    # batch
+        gold_score = self._score_batch_sentences(feats, tags)  # batch
+        # print("score size: {}, {}".format(forward_score.size(), gold_score.size()))
+        return torch.mean(forward_score - gold_score)  # scalar
 
     def forward(self, sentence):  # dont confuse this with _forward_alg above.
         # Get the emission scores from the BiLSTM
