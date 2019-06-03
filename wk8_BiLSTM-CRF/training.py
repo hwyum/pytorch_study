@@ -1,7 +1,7 @@
-import os
-os.chdir('./wk8_BiLSTM-CRF')
-import sys
-sys.path.append('/Users/haewonyum/Google 드라이브/Colab Notebooks/Pytorch_study/wk8_BiLSTM-CRF')
+# import os
+# os.chdir('./wk8_BiLSTM-CRF')
+# import sys
+# sys.path.append('/Users/haewonyum/Google 드라이브/Colab Notebooks/Pytorch_study/wk8_BiLSTM-CRF')
 
 import torch
 import torch.optim as optim
@@ -14,6 +14,7 @@ import fire
 import json
 import pickle
 from pathlib import Path
+from tqdm import tqdm
 
 
 # EMBEDDING_DIM = 5
@@ -37,6 +38,28 @@ from pathlib import Path
 # tag_to_ix = {"B": 0, "I": 1, "O": 2, START_TAG: 3, STOP_TAG: 4}
 
 cfgpath = './config.json'
+
+def evaluate(model, dataloader, dev):
+    """ calculate validation loss and accuracy"""
+    model.eval()
+    score = 0.
+
+    for step, mb in enumerate(tqdm(dataloader, desc = 'Validation')):
+        # sentence, tags, _ = map(lambda x: x.to(dev), mb)
+        sentence, tags, _ = mb
+        scores, tag_seqs = model((sentence, tags))
+        score += torch.mean(scores)
+
+        # accuracy calculation
+        # _correct, _num_yb = accuracy_batch(outputs, yb)
+        # correct += _correct
+        # num_yb += _num_yb
+    else:
+        score /= (step+1)
+        # accuracy = correct / num_yb
+    return score
+
+
 def train(cfgpath):
     START_TAG = "<START>"
     STOP_TAG = "<STOP>"
@@ -66,7 +89,7 @@ def train(cfgpath):
     # Build Data Loader
     tr_path = params['filepath'].get('tr')
     val_path = params['filepath'].get('val')
-    tr_ds = NER_data(tr_path, vocab, tag_to_ix)
+    tr_ds  = NER_data(tr_path, vocab, tag_to_ix)
     val_ds = NER_data(val_path, vocab, tag_to_ix)
     tr_dl = DataLoader(tr_ds, batch_size=params['training'].get('batch_size'),
                        shuffle=True, drop_last=True, collate_fn=collate_fn)
@@ -79,9 +102,15 @@ def train(cfgpath):
     #     precheck_tags = torch.tensor([tag_to_ix[t] for t in training_data[0][1]], dtype=torch.long)
     #     print(model(precheck_sent))
 
+    # GPU Setting
+    dev = torch.device("cuda") if torch.cuda.is_available() else torch.device("cpu")
+    model.to(dev)
+
     # Make sure prepare_sequence from earlier in the LSTM section is loaded
-    for epoch in range(300):  # again, normally you would NOT do 300 epochs, it is toy data
-        for sentence, tags in tr_dl:
+    for epoch in tqdm(range(1), desc='Epoch'):  # again, normally you would NOT do 300 epochs, it is toy data
+
+        model.train()
+        for sentence, tags, _ in tqdm(tr_dl, desc='Train Batch'):
             # Step 1. Remember that Pytorch accumulates gradients.
             # We need to clear them out before each instance
             model.zero_grad()
@@ -99,11 +128,19 @@ def train(cfgpath):
             loss.backward()
             optimizer.step()
 
+        # eval
+        score = evaluate(model, val_dl, dev)
+        print(
+            'Epoch: {}, training loss: {:.3f}, validation score: {:.3f}'
+            .format(epoch, loss, score))
+
     # Check predictions after training
     # with torch.no_grad():
     #     precheck_sent = prepare_sequence(training_data[0][0], word_to_ix)
     #     print(model(precheck_sent))
     # We got it!
+#
+# if __name__ == '__main__':
+#     fire.Fire(train)
 
-if __name__ == '__main__':
-    fire.Fire(train)
+train(cfgpath)
