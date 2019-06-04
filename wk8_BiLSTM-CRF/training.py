@@ -45,8 +45,9 @@ def evaluate(model, dataloader, dev):
     score = 0.
 
     for step, mb in enumerate(tqdm(dataloader, desc = 'Validation')):
-        # sentence, tags, _ = map(lambda x: x.to(dev), mb)
-        sentence, tags, _ = mb
+        sentence, tags, length = mb
+        sentence, tags = map(lambda x: x.to(dev), (sentence, tags))
+
         scores, tag_seqs = model((sentence, tags))
         score += torch.mean(scores)
 
@@ -63,6 +64,9 @@ def evaluate(model, dataloader, dev):
 def train(cfgpath):
     START_TAG = "<START>"
     STOP_TAG = "<STOP>"
+
+    # GPU Setting
+    dev = torch.device("cuda") if torch.cuda.is_available() else torch.device("cpu")
 
     # config file parsing
     with open(Path.cwd()/cfgpath) as io:
@@ -83,7 +87,7 @@ def train(cfgpath):
     embedding_dim = params['model'].get('embedding_dim')
     hidden_dim = params['model'].get('hidden_dim')
 
-    model = BiLSTM_CRF(vocab, tag_to_ix, embedding_dim, hidden_dim)
+    model = BiLSTM_CRF(vocab, tag_to_ix, embedding_dim, hidden_dim, dev)
     optimizer = optim.SGD(model.parameters(), lr=0.01, weight_decay=1e-4)
 
     # Build Data Loader
@@ -102,17 +106,20 @@ def train(cfgpath):
     #     precheck_tags = torch.tensor([tag_to_ix[t] for t in training_data[0][1]], dtype=torch.long)
     #     print(model(precheck_sent))
 
-    # GPU Setting
-    dev = torch.device("cuda") if torch.cuda.is_available() else torch.device("cpu")
+
     model.to(dev)
 
     # Make sure prepare_sequence from earlier in the LSTM section is loaded
     for epoch in tqdm(range(1), desc='Epoch'):  # again, normally you would NOT do 300 epochs, it is toy data
 
         model.train()
-        for sentence, tags, _ in tqdm(tr_dl, desc='Train Batch'):
+        for i, mb in enumerate(tqdm(tr_dl, desc='Train Batch')):
             # Step 1. Remember that Pytorch accumulates gradients.
             # We need to clear them out before each instance
+            print(mb)
+            sentence, tags, length = mb
+            sentence, tags = map(lambda x: x.to(dev), (sentence, tags))
+
             model.zero_grad()
 
             # # Step 2. Get our inputs ready for the network, that is,
@@ -127,6 +134,7 @@ def train(cfgpath):
             # calling optimizer.step()
             loss.backward()
             optimizer.step()
+            if i>3: break
 
         # eval
         score = evaluate(model, val_dl, dev)
