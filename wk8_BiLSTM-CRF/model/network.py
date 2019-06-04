@@ -11,14 +11,16 @@ STOP_TAG = "<STOP>"
 BATCH_SIZE = 128
 
 class BiLSTM_CRF(nn.Module):
-
-    def __init__(self, vocab:nlp.Vocab, tag_to_ix:Dict, embedding_dim:int, hidden_dim:int):
+    """ class for BiLSTM-CRF """
+    def __init__(self, vocab:nlp.Vocab, tag_to_ix:Dict, embedding_dim:int, hidden_dim:int, dev):
+        """ initializaing the class """
         super(BiLSTM_CRF, self).__init__()
         self.embedding_dim = embedding_dim
         self.hidden_dim = hidden_dim
         self.vocab_size = len(vocab.token_to_idx)
         self.tag_to_ix = tag_to_ix
         self.tagset_size = len(tag_to_ix)
+        self.dev = dev
 
         self.word_embeds = nn.Embedding.from_pretrained(torch.from_numpy(vocab.embedding.idx_to_vec.asnumpy()),freeze=True)
         self.lstm = nn.LSTM(embedding_dim, hidden_dim // 2,
@@ -68,6 +70,7 @@ class BiLSTM_CRF(nn.Module):
     def _get_lstm_features(self, sentence):
         batch_size = sentence.size(0)
         self.hidden = self.init_hidden(batch_size)
+        self.hidden.to(self.dev)
         #embeds = self.word_embeds(sentence).view(len(sentence), 1, -1)
         embeds = self.word_embeds(sentence)  # batch x seq_len x embed_dim
         # embeds shape: seq_len x 1 x embed_dim
