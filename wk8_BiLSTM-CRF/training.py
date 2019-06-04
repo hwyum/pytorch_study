@@ -17,26 +17,6 @@ from pathlib import Path
 from tqdm import tqdm
 
 
-# EMBEDDING_DIM = 5
-# HIDDEN_DIM = 4
-
-# # Make up some training data
-# training_data = [(
-#     "the wall street journal reported today that apple corporation made money".split(),
-#     "B I I I O O O B I O O".split()
-# ), (
-#     "georgia tech is a university in georgia".split(),
-#     "B I O O O O B".split()
-# )]
-#
-# word_to_ix = {}
-# for sentence, tags in training_data:
-#     for word in sentence:
-#         if word not in word_to_ix:
-#             word_to_ix[word] = len(word_to_ix)
-#
-# tag_to_ix = {"B": 0, "I": 1, "O": 2, START_TAG: 3, STOP_TAG: 4}
-
 cfgpath = './config.json'
 
 def evaluate(model, dataloader, dev):
@@ -48,7 +28,7 @@ def evaluate(model, dataloader, dev):
         sentence, tags, length = mb
         sentence, tags = map(lambda x: x.to(dev), (sentence, tags))
 
-        scores, tag_seqs = model((sentence, tags))
+        scores, tag_seqs = model(sentence)
         score += torch.mean(scores)
 
         # accuracy calculation
@@ -116,7 +96,7 @@ def train(cfgpath):
         for i, mb in enumerate(tqdm(tr_dl, desc='Train Batch')):
             # Step 1. Remember that Pytorch accumulates gradients.
             # We need to clear them out before each instance
-            print(mb)
+
             sentence, tags, length = mb
             sentence, tags = map(lambda x: x.to(dev), (sentence, tags))
 
