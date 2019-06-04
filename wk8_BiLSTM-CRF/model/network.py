@@ -70,7 +70,8 @@ class BiLSTM_CRF(nn.Module):
     def _get_lstm_features(self, sentence):
         batch_size = sentence.size(0)
         self.hidden = self.init_hidden(batch_size)
-        self.hidden.to(self.dev)
+        self.hidden[0].to(self.dev)
+        self.hidden[1].to(self.dev)
         #embeds = self.word_embeds(sentence).view(len(sentence), 1, -1)
         embeds = self.word_embeds(sentence)  # batch x seq_len x embed_dim
         # embeds shape: seq_len x 1 x embed_dim
@@ -150,17 +151,24 @@ class BiLSTM_CRF(nn.Module):
 
     def forward(self, sentence):  # dont confuse this with _forward_alg above.
         # Get the emission scores from the BiLSTM
-        lstm_feats = self._get_lstm_features(sentence)
-
+        lstm_feats = self._get_lstm_features(sentence) # batch x seq_len x tag_size
+        print("forward lstm feats size: ", lstm_feats.size())
         scores, tag_seqs = [], []
         # Find the best path, given the features.
-        for feat in lstm_feats:
+        for feat in lstm_feats:  # feat: seq x tag_size
             score, tag_seq = self._viterbi_decode(feat)
+            tag_seq = torch.tensor(tag_seq)
             scores.append(score)
             tag_seqs.append(tag_seq)
 
+
         scores = torch.stack(scores)
+        # print("scores size: ", scores.size())
+        # print(type(tag_seqs), len(tag_seqs))
+        # print([len(tag_seq) for tag_seq in tag_seqs])
+        # tag_seqs = torch.tensor(tag_seqs)
         tag_seqs = torch.stack(tag_seqs)
+
 
         return scores, tag_seqs
 
