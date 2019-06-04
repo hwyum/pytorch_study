@@ -25,7 +25,9 @@ class NER_data(Dataset):
         tags_to_idx = [self.tag_to_ix[tag] for tag in tags]
         length = len(sentence)
 
-        return torch.tensor(sentence_to_idx), torch.tensor(tags_to_idx), torch.tensor(length)
+        sample = (torch.tensor(sentence_to_idx), torch.tensor(tags_to_idx), length)
+
+        return sample
 
 
 
