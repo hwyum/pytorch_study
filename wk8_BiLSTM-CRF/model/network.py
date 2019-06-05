@@ -4,6 +4,7 @@ from utils import argmax, log_sum_exp
 import mxnet
 import gluonnlp as nlp
 from typing import Dict
+from modules import BiLSTM
 
 
 START_TAG = "<START>"
@@ -23,8 +24,9 @@ class BiLSTM_CRF(nn.Module):
         self.dev = dev
 
         self.word_embeds = nn.Embedding.from_pretrained(torch.from_numpy(vocab.embedding.idx_to_vec.asnumpy()),freeze=True)
-        self.lstm = nn.LSTM(embedding_dim, hidden_dim // 2,
-                            num_layers=1, bidirectional=True, batch_first=True)
+        self.lstm = BiLSTM(embedding_dim, hidden_dim // 2)
+        # self.lstm = nn.LSTM(embedding_dim, hidden_dim // 2,
+        #                     num_layers=1, bidirectional=True, batch_first=True)
 
         # Maps the output of the LSTM into tag space.
         self.hidden2tag = nn.Linear(hidden_dim, self.tagset_size)   #
@@ -69,13 +71,15 @@ class BiLSTM_CRF(nn.Module):
 
     def _get_lstm_features(self, sentence):
         batch_size = sentence.size(0)
-        self.hidden = self.init_hidden(batch_size)
-        self.hidden[0].to(self.dev)
-        self.hidden[1].to(self.dev)
+        # self.hidden = self.init_hidden(batch_size)
+        # self.hidden[0], self.hidden[1] = map(lambda x: x.to(self.dev), self.hidden)
+        # print("self.hidden: ", self.hidden.is_cuda)
         #embeds = self.word_embeds(sentence).view(len(sentence), 1, -1)
         embeds = self.word_embeds(sentence)  # batch x seq_len x embed_dim
         # embeds shape: seq_len x 1 x embed_dim
-        lstm_out, self.hidden = self.lstm(embeds, self.hidden)
+        # lstm_out, self.hidden = self.lstm(embeds, self.hidden)
+        lstm_out, self.hidden = self.lstm(embeds)
+        
         # lstm_out : batch x seq_len x hidden_dim
         # hidden : [(2 x batch x hidden_dim//2), (2 x batch x hidden_dim//2)]
         lstm_feats = self.hidden2tag(lstm_out)  # batch x seq_len x tag_size
