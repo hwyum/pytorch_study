@@ -80,13 +80,6 @@ def train(cfgpath):
     val_dl = DataLoader(val_ds, batch_size=params['training'].get('batch_size') * 2,
                         drop_last=False, collate_fn=collate_fn)
 
-    # # Check predictions before training
-    # with torch.no_grad():
-    #     precheck_sent = prepare_sequence(training_data[0][0], word_to_ix)
-    #     precheck_tags = torch.tensor([tag_to_ix[t] for t in training_data[0][1]], dtype=torch.long)
-    #     print(model(precheck_sent))
-
-
     model.to(dev)
 
     # Make sure prepare_sequence from earlier in the LSTM section is loaded
@@ -94,12 +87,11 @@ def train(cfgpath):
 
         model.train()
         for i, mb in enumerate(tqdm(tr_dl, desc='Train Batch')):
-            # Step 1. Remember that Pytorch accumulates gradients.
-            # We need to clear them out before each instance
-
             sentence, tags, length = mb
             sentence, tags = map(lambda x: x.to(dev), (sentence, tags))
 
+            # Step 1. Remember that Pytorch accumulates gradients.
+            # We need to clear them out before each instance
             model.zero_grad()
 
             # # Step 2. Get our inputs ready for the network, that is,
