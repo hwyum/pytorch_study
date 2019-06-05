@@ -19,5 +19,5 @@ class BiLSTM(nn.Module):
             return outputs1, outputs2
 
         else:
-            outputs, _ = self._bilstm(inputs)     # outputs : batch, seq_len, num_directions * hidden_size)
-            return outputs  # output shape: Batch x seq_len x (Hidden_dim * 2)
+            outputs, hidden = self._bilstm(inputs)     # outputs : batch, seq_len, num_directions * hidden_size)
+            return outputs, hidden  # output shape: Batch x seq_len x (Hidden_dim * 2)
