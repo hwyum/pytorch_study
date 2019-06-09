@@ -67,7 +67,7 @@ def train(cfgpath):
     embedding_dim = params['model'].get('embedding_dim')
     hidden_dim = params['model'].get('hidden_dim')
 
-    model = BiLSTM_CRF(vocab, tag_to_ix, embedding_dim, hidden_dim, dev)
+    model = BiLSTM_CRF(vocab, tag_to_ix, embedding_dim, hidden_dim, dev, start_tag=START_TAG, stop_tag=STOP_TAG)
     optimizer = optim.SGD(model.parameters(), lr=0.01, weight_decay=1e-4)
 
     # Build Data Loader
