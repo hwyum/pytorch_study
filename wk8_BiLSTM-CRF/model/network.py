@@ -37,8 +37,8 @@ class BiLSTM_CRF(nn.Module):
         # to the start tag and we never transfer from the stop tag
         self.START_TAG = start_tag
         self.STOP_TAG = stop_tag
-        self._transitions.data[:, tag_to_ix[self.START_TAG]] = -10000
-        self._transitions.data[tag_to_ix[self.STOP_TAG], :] = -10000
+        self._transitions.data[:, self._tag_to_ix[self.START_TAG]] = -10000
+        self._transitions.data[self._tag_to_ix[self.STOP_TAG], :] = -10000
 
     def neg_log_likelihood(self, sentence, tags, mask=None):
         """ Compute the negative probability of a sequence of tags given a sequence
@@ -184,54 +184,163 @@ class BiLSTM_CRF(nn.Module):
         :param emissions (torch.Tensor): Sequence of emissions for each label. Shape: (B, L, C)
         :param mask (torch.FloatTensor, optional): Tensor representing valid positions.
             If None, all positions are valid. Shape: (B, L)
-        :return:
-
-
+        :return (torch.Tensor): the viterbi score for given sequences of emissions for each batch. Shape: (B, )
+        :return (list of lists): the best viterbi sequence of labels for each batch
         """
 
-    def _viterbi_decode(self, feats):
+        if mask is None:
+            mask = torch.ones(emissions.shape[:2], dtype=torch.float)
+
+        scores, sequences = self._viterbi_decode(emissions, mask)
+        return scores, sequences
+
+    def _viterbi_decode(self, emissions, mask):
+        """ Compute the viterbi algorithm to find the most probable sequence of labels
+        given a sequence of emissions
+        :param emissions
+        :param mask
+        :return
+            scores (torch.Tensor)
+            sequences (list of lists)
+        """
+        batch_size, seq_len, tag_size = emissions.size()
+
+        # in the first iteration, BOS will have all the scores and the, the max
+        alphas = self._transitions[self._tag_to_ix[self.START_TAG]].unsqueeze(0) + emissions[:, 0]
+
         backpointers = []
 
-        # Initialize the viterbi variables in log space
-        init_vvars = torch.full((1, self.tagset_size), -10000.)
-        init_vvars[0][self.tag_to_ix[START_TAG]] = 0
+        for i in range (1, seq_len):
+            alpha_t = []
+            backpointers_t = []
 
-        # forward_var at step i holds the viterbi variables for step i-1
-        forward_var = init_vvars
-        for feat in feats:
-            bptrs_t = []  # holds the backpointers for this step
-            viterbivars_t = []  # holds the viterbi variables for this step
+            for tag in range(tag_size):
+                # get the emission for the current tag
+                e_scores = emissions[:, i, tag]  # (B, )
+                e_scores = e_scores.unsqueeze(1)  # (B, 1)
 
-            for next_tag in range(self.tagset_size):
-                # next_tag_var[i] holds the viterbi variable for tag i at the
-                # previous step, plus the score of transitioning
-                # from tag i to next_tag.
-                # We don't include the emission scores here because the max
-                # does not depend on them (we add them in below)
-                next_tag_var = forward_var + self.transitions[next_tag]
-                best_tag_id = argmax(next_tag_var)
-                bptrs_t.append(best_tag_id)
-                viterbivars_t.append(next_tag_var[0][best_tag_id].view(1))
-            # Now add in the emission scores, and assign forward_var to the set
-            # of viterbi variables we just computed
-            forward_var = (torch.cat(viterbivars_t) + feat).view(1, -1)
-            backpointers.append(bptrs_t)
+                # transition score
+                t_scores = self._transitions[i, tag]
+                t_scores = t_scores.unsqueeze(0)  # (B, 1)
 
-        # Transition to STOP_TAG
-        terminal_var = forward_var + self.transitions[self.tag_to_ix[STOP_TAG]]
-        best_tag_id = argmax(terminal_var)
-        path_score = terminal_var[0][best_tag_id]
+                # combine current scores with previous alphas
+                scores = e_scores + t_scores + alphas
 
-        # Follow the back pointers to decode the best path.
-        best_path = [best_tag_id]
-        for bptrs_t in reversed(backpointers):
-            best_tag_id = bptrs_t[best_tag_id]
-            best_path.append(best_tag_id)
-        # Pop off the start tag (we dont want to return that to the caller)
-        start = best_path.pop()
-        assert start == self.tag_to_ix[START_TAG]  # Sanity check
-        best_path.reverse()
-        return path_score, best_path
+                # find the highest score and the tag associated with it
+                max_score, max_score_tag = torch.max(scores, dim=-1)
+
+                # add the max score for the current tag
+                alpha_t.append(max_score)
+
+                # add the max_score_tag for our list of backpointers
+                backpointers_t.append(max_score_tag)
+
+            # create a torch matrix from alpha_t
+            new_alphas = torch.stack(alpha_t, dim=1)  # (B, C)
+
+            # apply mask
+            is_valid = mask[:, i].unsqueeze(-1)
+            alphas = is_valid * new_alphas + (1-is_valid) * alphas
+
+            # append the new backpointers
+            backpointers.append(backpointers_t)
+
+        # add the scores for the final transition
+        last_transition = self._transitions[:, self._tag_to_ix[self.STOP_TAG]]
+        end_scores = alphas + last_transition.unsqueeze(0)
+
+        # get the final most probable score and the final most probable tag
+        max_final_scores, max_final_tags = torch.max(end_scores, dim=1)
+
+
+        # find the best sequence of labels for each sample in the batch
+        best_sequences = []
+        emission_lengths = mask.int().sum(dim=1)
+
+        for i in range(batch_size):
+            sample_length = emission_lengths[i].item()
+
+            # recover the max tag for the last timestep
+            sample_final_tag = max_final_tags[i].item()
+
+            # limit the backpointers until the last but one
+            # since the last corresponds to the sample_final_tag  --> ????
+            sample_backpointers = backpointers[: sample_length - 1]
+
+            # follow the backpointers to build the sequence of labels
+            sample_path = self._find_best_path(i, sample_final_tag, sample_backpointers)
+
+            # add this path to the list of best sequences
+            best_sequences.append(sample_path)
+
+        return max_final_scores, best_sequences
+
+
+    def _find_best_path(self, sample_id, best_tag, backpointers):
+        """ Auxiliary function to find the best path sequence for a specific sample
+        :param sample_id (int)
+        :param best_tag
+        :param backpointers(list of lists of tensors)
+        :return:
+            list of ints: a list of tag indexes representing the best path
+        """
+
+        # add the final best_tag to our best path
+        best_path = [best_tag]
+
+        # traverse the backpointers in backwards
+        for backpointers_t in reversed(backpointers):
+
+            best_tag = backpointers[best_tag][sample_id].item()
+            best_path.insert(0, best_tag)
+
+        return best_path
+
+
+
+
+
+        #
+        # # Initialize the viterbi variables in log space
+        # init_vvars = torch.full((1, self.tagset_size), -10000.)
+        # init_vvars[0][self.tag_to_ix[START_TAG]] = 0
+        #
+        # # forward_var at step i holds the viterbi variables for step i-1
+        # forward_var = init_vvars
+        # for feat in feats:
+        #     bptrs_t = []  # holds the backpointers for this step
+        #     viterbivars_t = []  # holds the viterbi variables for this step
+        #
+        #     for next_tag in range(self.tagset_size):
+        #         # next_tag_var[i] holds the viterbi variable for tag i at the
+        #         # previous step, plus the score of transitioning
+        #         # from tag i to next_tag.
+        #         # We don't include the emission scores here because the max
+        #         # does not depend on them (we add them in below)
+        #         next_tag_var = forward_var + self.transitions[next_tag]
+        #         best_tag_id = argmax(next_tag_var)
+        #         bptrs_t.append(best_tag_id)
+        #         viterbivars_t.append(next_tag_var[0][best_tag_id].view(1))
+        #     # Now add in the emission scores, and assign forward_var to the set
+        #     # of viterbi variables we just computed
+        #     forward_var = (torch.cat(viterbivars_t) + feat).view(1, -1)
+        #     backpointers.append(bptrs_t)
+        #
+        # # Transition to STOP_TAG
+        # terminal_var = forward_var + self.transitions[self.tag_to_ix[STOP_TAG]]
+        # best_tag_id = argmax(terminal_var)
+        # path_score = terminal_var[0][best_tag_id]
+        #
+        # # Follow the back pointers to decode the best path.
+        # best_path = [best_tag_id]
+        # for bptrs_t in reversed(backpointers):
+        #     best_tag_id = bptrs_t[best_tag_id]
+        #     best_path.append(best_tag_id)
+        # # Pop off the start tag (we dont want to return that to the caller)
+        # start = best_path.pop()
+        # assert start == self.tag_to_ix[START_TAG]  # Sanity check
+        # best_path.reverse()
+        # return path_score, best_path
 
 
 
