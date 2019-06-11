@@ -27,11 +27,11 @@ class BiLSTM_CRF(nn.Module):
         self._dev = dev
 
         self._word_embeds = Embedding(self._vocab_size, self._embedding_dim, is_pretrained=True, idx_to_vec=vocab.embedding.idx_to_vec)
-        self._lstm = BiLSTM(embedding_dim, hidden_dim // 2)
-        self._hidden2tag = nn.Linear(hidden_dim, self.tagset_size)   # Maps the output of the LSTM into tag space.
+        self._lstm = BiLSTM(embedding_dim, self._hidden_dim // 2)
+        self._hidden2tag = nn.Linear(self._hidden_dim, self._tagset_size)   # Maps the output of the LSTM into tag space.
 
         # Matrix of transition parameters. Entry i,j is the score of transitioning *from* i *to* j.
-        self._transitions = nn.Parameter(torch.randn(self.tagset_size, self.tagset_size))
+        self._transitions = nn.Parameter(torch.randn(self._tagset_size, self._tagset_size))
 
         # These two statements enforce the constraint that we never transfer
         # to the start tag and we never transfer from the stop tag
@@ -39,12 +39,6 @@ class BiLSTM_CRF(nn.Module):
         self.STOP_TAG = stop_tag
         self._transitions.data[:, tag_to_ix[self.START_TAG]] = -10000
         self._transitions.data[tag_to_ix[self.STOP_TAG], :] = -10000
-
-        #self._hidden = self._init_hidden(self._dev)
-
-    def _init_hidden(self, batch_size, dev):
-        return (torch.randn(2, batch_size, self._hidden_dim // 2).to(dev),
-                torch.randn(2, batch_size, self._hidden_dim // 2).to(dev))
 
     def neg_log_likelihood(self, sentence, tags, mask=None):
         """ Compute the negative probability of a sequence of tags given a sequence
@@ -130,7 +124,7 @@ class BiLSTM_CRF(nn.Module):
         # init_alphas[:, self._tag_to_ix[self.START_TAG]] = 0.
 
         # in the first iteration, BOS will have all the scores
-        alphas = emissions[:, 0] + self._transitions[self._tag_to_ix[self.START_TAG], :].unsqueeze(0)
+        alphas = emissions[:, 0] + self._transitions[self._tag_to_ix[self.START_TAG], :].unsqueeze(0)  # B x C
 
         # Wrap in a variable so that we will get automatic backprop
         # forward_var = init_alphas  # [B, C]
@@ -154,13 +148,18 @@ class BiLSTM_CRF(nn.Module):
                 # add the new alphas for the current tag
                 alpha_t.append(torch.logsumexp(scores, dim=1))
 
-            emit_score = feats[:, t].unsqueeze(2)  # B x C x 1
-            next_tag_var = forward_var.unsqueeze(1) + emit_score + trans  # [B, 1, C] -> [B, C, C]
-            forward_var = log_sum_exp(next_tag_var)  # [B, C, C] -> [B, C]
+            # create a torch matrix from alpha_t
+            new_alphas = torch.stack(alpha_t, dim=1)  # B x C
 
-        terminal_var = forward_var + self._transitions[self._tag_to_ix[STOP_TAG]]
-        alpha = log_sum_exp(terminal_var)
-        return alpha
+            # set alphas if the mask is valid, otherwise keep the current values
+            is_valid = mask[: , t].unsqueeze(-1)
+            alphas = is_valid * new_alphas + (1-is_valid) * alphas
+
+        # add the scores for the final transition
+        last_transition = self._transitions[:, self._tag_to_ix[self.STOP_TAG]]
+        end_scores = alphas + last_transition
+
+        return torch.logsumexp(end_scores, dim=1)
 
 
     def _get_emissions(self, sentence):
@@ -172,8 +171,23 @@ class BiLSTM_CRF(nn.Module):
         lstm_out, self._hidden = self._lstm(embeds)
         # lstm_out : batch x seq_len x hidden_dim
         # hidden : [(2 x batch x hidden_dim//2), (2 x batch x hidden_dim//2)]
-        lstm_feats = self._hidden2tag(lstm_out)  # batch x seq_len x tag_size
-        return lstm_feats
+        emissions = self._hidden2tag(lstm_out)  # B x L x C
+        return emissions
+
+    def _init_hidden(self, batch_size, dev):
+        return (torch.randn(2, batch_size, self._hidden_dim // 2).to(dev),
+                torch.randn(2, batch_size, self._hidden_dim // 2).to(dev))
+
+    def decode(self, emissions, mask=None):
+        """ find the most probable sequence of labels given the emissions using the Viterbi algorithm
+
+        :param emissions (torch.Tensor): Sequence of emissions for each label. Shape: (B, L, C)
+        :param mask (torch.FloatTensor, optional): Tensor representing valid positions.
+            If None, all positions are valid. Shape: (B, L)
+        :return:
+
+
+        """
 
     def _viterbi_decode(self, feats):
         backpointers = []
@@ -221,6 +235,11 @@ class BiLSTM_CRF(nn.Module):
 
 
 
+
+
+
+
+################## Previous Version ##################
     def forward(self, sentence):  # dont confuse this with _forward_alg above.
         # Get the emission scores from the BiLSTM
         lstm_feats = self._get_emissions(sentence) # batch x seq_len x tag_size
