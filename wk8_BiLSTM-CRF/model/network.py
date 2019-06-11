@@ -296,7 +296,14 @@ class BiLSTM_CRF(nn.Module):
 
         return best_path
 
+    def forward(self, sentence, mask):  # dont confuse this with _forward_alg above.
+        # Get the emission scores from the BiLSTM
+        emissions = self._get_emissions(sentence)  # B x L x C
+        print("forward lstm feats(emissions) size: ", emissions.size())
 
+        scores, sequences = self.decode(self, emissions, mask=mask)
+
+        return scores, sequences
 
 
 
@@ -349,28 +356,7 @@ class BiLSTM_CRF(nn.Module):
 
 
 ################## Previous Version ##################
-    def forward(self, sentence):  # dont confuse this with _forward_alg above.
-        # Get the emission scores from the BiLSTM
-        lstm_feats = self._get_emissions(sentence) # batch x seq_len x tag_size
-        print("forward lstm feats size: ", lstm_feats.size())
-        scores, tag_seqs = [], []
-        # Find the best path, given the features.
-        for feat in lstm_feats:  # feat: seq x tag_size
-            score, tag_seq = self._viterbi_decode(feat)
-            tag_seq = torch.tensor(tag_seq)
-            scores.append(score)
-            tag_seqs.append(tag_seq)
 
-
-        scores = torch.stack(scores)
-        # print("scores size: ", scores.size())
-        # print(type(tag_seqs), len(tag_seqs))
-        # print([len(tag_seq) for tag_seq in tag_seqs])
-        # tag_seqs = torch.tensor(tag_seqs)
-        tag_seqs = torch.stack(tag_seqs)
-
-
-        return scores, tag_seqs
 
 
     def _score_batch_sentences(self, batch_feats, batch_tags):
