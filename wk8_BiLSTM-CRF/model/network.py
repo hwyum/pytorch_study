@@ -220,7 +220,7 @@ class BiLSTM_CRF(nn.Module):
                 e_scores = e_scores.unsqueeze(1)  # (B, 1)
 
                 # transition score
-                t_scores = self._transitions[i, tag]
+                t_scores = self._transitions[:, tag]
                 t_scores = t_scores.unsqueeze(0)  # (B, 1)
 
                 # combine current scores with previous alphas
@@ -291,7 +291,7 @@ class BiLSTM_CRF(nn.Module):
         # traverse the backpointers in backwards
         for backpointers_t in reversed(backpointers):
 
-            best_tag = backpointers[best_tag][sample_id].item()
+            best_tag = backpointers_t[best_tag][sample_id].item()
             best_path.insert(0, best_tag)
 
         return best_path
@@ -299,9 +299,9 @@ class BiLSTM_CRF(nn.Module):
     def forward(self, sentence, mask):  # dont confuse this with _forward_alg above.
         # Get the emission scores from the BiLSTM
         emissions = self._get_emissions(sentence)  # B x L x C
-        print("forward lstm feats(emissions) size: ", emissions.size())
+        # print("forward lstm feats(emissions) size: ", emissions.size())
 
-        scores, sequences = self.decode(self, emissions, mask=mask)
+        scores, sequences = self.decode(emissions, mask=mask)
 
         return scores, sequences
 
