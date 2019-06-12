@@ -13,13 +13,6 @@ def prepare_sequence(seq, to_ix):
     return torch.tensor(idxs, dtype=torch.long)
 
 
-# # Compute log sum exp in a numerically stable way for the forward algorithm
-# def log_sum_exp(vec):
-#     max_score = vec[0, argmax(vec)]
-#     max_score_broadcast = max_score.view(1, -1).expand(1, vec.size()[1])
-#     return max_score + \
-#         torch.log(torch.sum(torch.exp(vec - max_score_broadcast)))
-
 def log_sum_exp(x):
     m = torch.max(x, -1)[0]
     return m + torch.log(torch.sum(torch.exp(x - m.unsqueeze(-1)), -1))
@@ -29,6 +22,8 @@ def collate_fn(inputs: List[Tuple[torch.Tensor, torch.Tensor, torch.Tensor]]) ->
     sentence, tags, length = list(zip(*inputs))
     sentence = pad_sequence(sentence, batch_first=True, padding_value=1)
     tags = pad_sequence(tags, batch_first=True, padding_value=1)
-    return sentence, tags, length
+    mask = (sentence != 1)
+    mask = torch.tensor(mask, dtype=torch.float)
+    return sentence, tags, mask
 
 
