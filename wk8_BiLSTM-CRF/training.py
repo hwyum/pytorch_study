@@ -25,10 +25,10 @@ def evaluate(model, dataloader, dev):
     score = 0.
 
     for step, mb in enumerate(tqdm(dataloader, desc = 'Validation')):
-        sentence, tags, length = mb
+        sentence, tags, mask = mb
         sentence, tags = map(lambda x: x.to(dev), (sentence, tags))
 
-        scores, tag_seqs = model(sentence)
+        scores, tag_seqs = model(sentence, mask)
         score += torch.mean(scores)
 
         # accuracy calculation
@@ -46,7 +46,8 @@ def train(cfgpath):
     STOP_TAG = "<STOP>"
 
     # GPU Setting
-    dev = torch.device("cuda") if torch.cuda.is_available() else torch.device("cpu")
+    # dev = torch.device("cuda") if torch.cuda.is_available() else torch.device("cpu")
+    dev = torch.device("cpu")
 
     # config file parsing
     with open(Path.cwd()/cfgpath) as io:
@@ -87,7 +88,7 @@ def train(cfgpath):
 
         model.train()
         for i, mb in enumerate(tqdm(tr_dl, desc='Train Batch')):
-            sentence, tags, length = mb
+            sentence, tags, mask = mb
             sentence, tags = map(lambda x: x.to(dev), (sentence, tags))
 
             # Step 1. Remember that Pytorch accumulates gradients.
@@ -106,7 +107,6 @@ def train(cfgpath):
             # calling optimizer.step()
             loss.backward()
             optimizer.step()
-            if i>3: break
 
         # eval
         score = evaluate(model, val_dl, dev)
