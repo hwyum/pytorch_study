@@ -89,8 +89,7 @@ class BiLSTM_CRF(nn.Module):
             # we could: iterate over batches, check if we reached a mask symbol
             # and stop the iteration, but vecotrizing is faster due to gpu,
             # so instead we perform an element-wise multiplication
-            is_valid = mask[:, i]
-            is_valid = is_valid.to(self._dev)
+            is_valid = mask[:, i].to(self._dev)
 
             previous_tags = tags[:, i - 1]
             current_tags = tags[:, i]
