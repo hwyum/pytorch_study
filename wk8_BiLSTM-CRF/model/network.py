@@ -11,12 +11,10 @@ from model.modules import BiLSTM, Embedding
 class BiLSTM_CRF(nn.Module):
     """ class for BiLSTM-CRF
         notation:
-            batch size: B
-            sequence length: L
-            tag size: C
+            batch size: B, sequence length: L, tag size: C
     """
     def __init__(self, vocab:nlp.Vocab, tag_to_ix:Dict, embedding_dim:int, hidden_dim:int, dev,
-                 start_tag:str="<START>", stop_tag:str="<STOP>" ):
+                 start_tag:str = "<START>", stop_tag:str = "<STOP>"):
         """ initializaing the class """
         super(BiLSTM_CRF, self).__init__()
         self._embedding_dim = embedding_dim
@@ -33,14 +31,14 @@ class BiLSTM_CRF(nn.Module):
         # Matrix of transition parameters. Entry i,j is the score of transitioning *from* i *to* j.
         self._transitions = nn.Parameter(torch.randn(self._tagset_size, self._tagset_size))
 
-        # These two statements enforce the constraint that we never transfer
-        # to the start tag and we never transfer from the stop tag
         self.START_TAG = start_tag
         self.STOP_TAG = stop_tag
+        # These two statements enforce the constraint that we never transfer
+        # to the start tag and we never transfer from the stop tag
         self._transitions.data[:, self._tag_to_ix[self.START_TAG]] = -10000
         self._transitions.data[self._tag_to_ix[self.STOP_TAG], :] = -10000
 
-    def neg_log_likelihood(self, sentence, tags, mask=None):
+    def neg_log_likelihood(self, sentence:torch.Tensor, tags:torch.Tensor, mask:torch.Tensor=None) -> torch.Tensor:
         """ Compute the negative probability of a sequence of tags given a sequence
         :param sentence (torch.Tensor): Input sentence sequence (B, L)
         :param tags (torch.Tensor): Input tags sequence (B, L)
@@ -52,8 +50,8 @@ class BiLSTM_CRF(nn.Module):
             mask = torch.ones(emissions.shape[:2], dtype=torch.float)
 
         scores = self._compute_scores(emissions, tags, mask)  # get scores (numerator)
-        partition = self._compute_log_partition(emissions, mask)    # partition (denominator)
-        # print("score size: {}, {}".format(forward_score.size(), gold_score.size()))
+        partition = self._compute_log_partition(emissions, mask)    # get partition (denominator)
+
         return torch.mean(partition - scores)  # scalar
 
     def _compute_scores(self, emissions:torch.Tensor, tags:torch.Tensor, mask:torch.Tensor) -> torch.Tensor:
