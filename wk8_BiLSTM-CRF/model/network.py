@@ -152,7 +152,7 @@ class BiLSTM_CRF(nn.Module):
             new_alphas = torch.stack(alpha_t, dim=1)  # B x C
 
             # set alphas if the mask is valid, otherwise keep the current values
-            is_valid = mask[: , t].unsqueeze(-1)
+            is_valid = mask[: , t].unsqueeze(-1).to(self._dev)
             alphas = is_valid * new_alphas + (1-is_valid) * alphas
 
         # add the scores for the final transition
