@@ -44,13 +44,15 @@ def evaluate(model, dataloader, dev):
     return score, f1_score
 
 
-def train(cfgpath):
+def train(cfgpath, dev=None):
     START_TAG = "<START>"
     STOP_TAG = "<STOP>"
 
     # GPU Setting
-    dev = torch.device("cuda") if torch.cuda.is_available() else torch.device("cpu")
-    #dev = torch.device("cpu")
+    if dev == "cpu":
+        dev = torch.device("cpu")
+    else:
+        dev = torch.device("cuda") if torch.cuda.is_available() else torch.device("cpu")
 
     # config file parsing
     with open(Path.cwd()/cfgpath) as io:
