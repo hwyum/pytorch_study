@@ -90,7 +90,7 @@ class BiLSTM_CRF(nn.Module):
             # and stop the iteration, but vecotrizing is faster due to gpu,
             # so instead we perform an element-wise multiplication
             is_valid = mask[:, i]
-            is_valid.to(self._dev)
+            is_valid = is_valid.to(self._dev)
 
             previous_tags = tags[:, i - 1]
             current_tags = tags[:, i]
@@ -100,8 +100,8 @@ class BiLSTM_CRF(nn.Module):
             t_scores = self._transitions[previous_tags, current_tags]
 
             # apply the mask
-            e_scores = e_scores * is_valid
-            t_scores = t_scores * is_valid
+            e_scores = (e_scores * is_valid)
+            t_scores = (t_scores * is_valid)
 
             scores += e_scores + t_scores
 
