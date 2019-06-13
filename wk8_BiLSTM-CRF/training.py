@@ -49,8 +49,8 @@ def train(cfgpath):
     STOP_TAG = "<STOP>"
 
     # GPU Setting
-    # dev = torch.device("cuda") if torch.cuda.is_available() else torch.device("cpu")
-    dev = torch.device("cpu")
+    dev = torch.device("cuda") if torch.cuda.is_available() else torch.device("cpu")
+    #dev = torch.device("cpu")
 
     # config file parsing
     with open(Path.cwd()/cfgpath) as io:
