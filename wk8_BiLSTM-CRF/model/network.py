@@ -90,6 +90,7 @@ class BiLSTM_CRF(nn.Module):
             # and stop the iteration, but vecotrizing is faster due to gpu,
             # so instead we perform an element-wise multiplication
             is_valid = mask[:, i]
+            is_valid.to(self._dev)
 
             previous_tags = tags[:, i - 1]
             current_tags = tags[:, i]
