@@ -64,11 +64,12 @@ class BiLSTM_CRF(nn.Module):
             Shape of (B,)
         """
         batch_size, seq_len = tags.size()
-        scores = torch.zeros(batch_size)
+        scores = torch.zeros(batch_size).to(self._dev)
 
         # save first and last tags to be used later
         first_tags = tags[:, 0]
         last_valid_idx = mask.int().sum(1) - 1
+        last_valid_idx = last_valid_idx.to(self._dev)
         last_tags = tags.gather(1, last_valid_idx.unsqueeze(1)).squeeze()
 
         # Initialize: add the transition from BOS to the first tags for each batch
