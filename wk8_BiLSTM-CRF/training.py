@@ -17,11 +17,13 @@ from pathlib import Path
 from tqdm import tqdm
 from metrics import f1
 import numpy as np
+from torch.nn.utils.rnn import pad_sequence
 
-# cfgpath = './config.json'
+
+cfgpath = './config.json'
 
 
-def evaluate(model, dataloader, dev):
+def evaluate(model, dataloader, labels, dev):
     """ calculate validation score and accuracy"""
     model.eval()
     score = 0.
@@ -34,7 +36,15 @@ def evaluate(model, dataloader, dev):
 
         scores, pred_seqs = model(sentence, mask)
         score += torch.mean(scores)
-        accumulated_preds.append(np.asarray(pred_seqs))
+
+        max_len = sentence.size()[1]
+        pred_seqs_padded = []
+        for seq in pred_seqs:
+            if len(seq) < max_len:
+                seq += [1] * (max_len - len(seq))
+            pred_seqs_padded.append(seq)
+
+        accumulated_preds.append(np.asarray(pred_seqs_padded))
         accumulated_targets.append(tags.numpy())
 
     else:
@@ -66,6 +76,7 @@ def train(cfgpath):
 
     # Load Model
     tag_to_ix = vocab_tag.token_to_idx
+    valid_tags = list(tag_to_ix.values())[2:]  # for evaluation
     tag_to_ix[START_TAG] = len(tag_to_ix)
     tag_to_ix[STOP_TAG] = len(tag_to_ix)
     embedding_dim = params['model'].get('embedding_dim')
@@ -82,12 +93,12 @@ def train(cfgpath):
     tr_dl = DataLoader(tr_ds, batch_size=params['training'].get('batch_size'),
                        shuffle=True, drop_last=True, collate_fn=collate_fn)
     val_dl = DataLoader(val_ds, batch_size=params['training'].get('batch_size') * 2,
-                        drop_last=False, collate_fn=collate_fn)
+                        drop_last=True, collate_fn=collate_fn)
 
     # Training Parameter
     epochs = params['training'].get('epochs')
     lr = params['training'].get('learning_rate')
-    optimizer = optim.Adam(model.parameters(), lr=lr)
+    opt = optim.Adam(model.parameters(), lr=lr)
 
     # Training
     for epoch in tqdm(range(epochs), desc='Epoch'):
@@ -107,16 +118,22 @@ def train(cfgpath):
 
             # Step 3. Compute the loss, gradients, and update the parameters by calling optimizer.step()
             loss.backward()
-            optimizer.step()
+            opt.step()
 
         # eval
         else:
-            score, f1_score = evaluate(model, val_dl, dev)
+
+            score, f1_score = evaluate(model, val_dl, valid_tags, dev)
             loss_avg /= (i+1)
             print(
-                'Epoch: {}, training loss: {:.3f}, validation score: {:.3f}, validation f1 score: {:.3f}'
+                'Epoch: {}, training loss: {:.3f}, validation score: {:.3f}, f1 score: {:.3f}'
                 .format(epoch, loss_avg, score, f1_score))
 
+    ckpt = {'epoch': epochs,
+            'model_state_dict': model.state_dict(),
+            'opt_state_dict': opt.state_dict()}
+    savepath = params['filepath'].get('ckpt')
+    torch.save(ckpt, savepath)
 
 if __name__ == '__main__':
     fire.Fire(train)
