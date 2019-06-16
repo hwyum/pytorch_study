@@ -22,7 +22,7 @@ class Embedding(nn.Module):
 
         if self._is_pretrained:
             assert self._idx_to_vec is not None
-            self._embedding_from_pretrained = nn.Embedding.from_pretrained(torch.from_numpy(self._idx_to_vec.asnumpy()), freeze=True)
+            self._embedding_from_pretrained = nn.Embedding.from_pretrained(torch.from_numpy(self._idx_to_vec.asnumpy()), freeze=False)
 
         # Embedding output : N x L x C
 
