@@ -17,14 +17,9 @@ from pathlib import Path
 from tqdm import tqdm
 from metrics import f1
 import numpy as np
-from torch.nn.utils.rnn import pad_sequence
-
-
-cfgpath = './config.json'
-
 
 def evaluate(model, dataloader, labels, dev):
-    """ calculate validation score and accuracy"""
+    """ calculate validation score and f1 score """
     model.eval()
     score = 0.
     f1_score = 0.
@@ -55,7 +50,7 @@ def evaluate(model, dataloader, labels, dev):
     return score, f1_score
 
 
-def train(cfgpath, dev=None):
+def train(cfgpath, dev=None, from_checkpoint=False):
     START_TAG = "<START>"
     STOP_TAG = "<STOP>"
 
@@ -84,9 +79,7 @@ def train(cfgpath, dev=None):
     tag_to_ix[STOP_TAG] = len(tag_to_ix)
     embedding_dim = params['model'].get('embedding_dim')
     hidden_dim = params['model'].get('hidden_dim')
-
     model = BiLSTM_CRF(vocab, tag_to_ix, embedding_dim, hidden_dim, dev, start_tag=START_TAG, stop_tag=STOP_TAG)
-    model.to(dev)
 
     # Build Data Loader
     tr_path = params['filepath'].get('tr')
@@ -96,12 +89,27 @@ def train(cfgpath, dev=None):
     tr_dl = DataLoader(tr_ds, batch_size=params['training'].get('batch_size'),
                        shuffle=True, drop_last=True, collate_fn=collate_fn)
     val_dl = DataLoader(val_ds, batch_size=params['training'].get('batch_size') * 2,
-                        drop_last=True, collate_fn=collate_fn)
+                        drop_last=False, collate_fn=collate_fn)
 
     # Training Parameter
     epochs = params['training'].get('epochs')
     lr = params['training'].get('learning_rate')
     opt = optim.Adam(model.parameters(), lr=lr)
+
+    # if training from checkpoint
+    if from_checkpoint:
+        model_path = params['filepath'].get('ckpt')
+        ckpt = torch.load(model_path)
+        model.load_state_dict(ckpt['model_state_dict'])
+        opt.load_state_dict(ckpt['opt_state_dict'])
+        for state in opt.state.values():
+            for k, v in state.items():
+                if isinstance(v, torch.Tensor):
+                    state[k] = v.to(dev)
+
+        prev_epoch = ckpt['epoch']
+
+    model.to(dev)
 
     # Training
     for epoch in tqdm(range(epochs), desc='Epoch'):
@@ -125,18 +133,18 @@ def train(cfgpath, dev=None):
 
         # eval
         else:
-
             score, f1_score = evaluate(model, val_dl, valid_tags, dev)
             loss_avg /= (i+1)
             print(
                 'Epoch: {}, training loss: {:.3f}, validation score: {:.3f}, f1 score: {:.3f}'
-                .format(epoch, loss_avg, score, f1_score))
+                .format(prev_epoch+epoch, loss_avg, score, f1_score))
 
-    ckpt = {'epoch': epochs,
+    ckpt = {'epoch': prev_epoch+epoch,
             'model_state_dict': model.state_dict(),
             'opt_state_dict': opt.state_dict()}
     savepath = params['filepath'].get('ckpt')
     torch.save(ckpt, savepath)
+
 
 if __name__ == '__main__':
     fire.Fire(train)
