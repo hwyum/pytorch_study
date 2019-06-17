@@ -28,7 +28,8 @@ pytorch study code
 **[8. wk8: NER with BiLSTM-CRF](https://github.com/hwyum/pytorch_study/tree/master/wk8_BiLSTM-CRF)**
 * Dataset: [Naver NLP Challenge Dataset](https://github.com/naver/nlp-challenge/tree/master/missions/ner)
 * Reference: [Bidirectional LSTM-CRF Models for Sequence Tagging (2015)](https://arxiv.org/abs/1508.01991) <br>
-* Result: 15 Epochs<br>
-|training loss|validation score|validation f1 score|
-|:-----------:|:--------------:|:-----------------:|
-|1.2          |127.940         |0.956              |
+* Result: 15 Epochs
+
+    |training loss|validation score|validation f1 score|
+    |:-----------:|:--------------:|:-----------------:|
+    |1.2          |127.940         |0.956              |
