@@ -23,4 +23,12 @@ pytorch study code
 
 **[7. wk7: Q-Q Similarity with SAN](https://github.com/hwyum/pytorch_study/tree/master/wk7_SAN)**
 * Dataset: [Korean Question Pair Dataset (by songys)](https://github.com/songys/Question_pair)
-* Reference: [A Structured Self-attentive Sentence Embedding (2017)](https://arxiv.org/abs/1703.03130) 
+* Reference: [A Structured Self-attentive Sentence Embedding (2017)](https://arxiv.org/abs/1703.03130)
+
+**[8. wk8: NER with BiLSTM-CRF](https://github.com/hwyum/pytorch_study/tree/master/wk8_BiLSTM-CRF)**
+* Dataset: [Naver NLP Challenge Dataset](https://github.com/naver/nlp-challenge/tree/master/missions/ner)
+* Reference: [Bidirectional LSTM-CRF Models for Sequence Tagging (2015)](https://arxiv.org/abs/1508.01991) <br>
+* Result: 15 Epochs<br>
+|training loss|validation score|validation f1 score|
+|:-----------:|:--------------:|:-----------------:|
+|1.2          |127.940         |0.956              |
