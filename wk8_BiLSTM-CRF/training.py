@@ -45,11 +45,12 @@ def evaluate(model, dataloader, labels, dev):
             pred_seqs_padded.append(seq)
 
         accumulated_preds.append(np.asarray(pred_seqs_padded))
-        accumulated_targets.append(tags.numpy())
+        accumulated_targets.append(tags.cpu().numpy())
 
     else:
         score /= (step+1)
-        f1_score = f1(np.concatenate(accumulated_preds, axis=None), np.concatenate(accumulated_targets, axis=None))
+        f1_score = f1(np.concatenate(accumulated_preds, axis=None), np.concatenate(accumulated_targets, axis=None),
+                      labels=labels)
 
     return score, f1_score
 
