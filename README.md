@@ -1,5 +1,4 @@
-# pytorch_study
-pytorch study code
+# NLP Implementation in PyTorch
 
 **1. wk1: pytorch official toturial**
   * [What is torch.nn really?](https://pytorch.org/tutorials/beginner/nn_tutorial.html)
