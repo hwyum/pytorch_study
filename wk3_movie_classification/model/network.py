@@ -2,6 +2,7 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 from gluonnlp import Vocab
+from model.modules import Embedding
 
 class movieCNN(nn.Module):
     ''' CNN Network implementation'''
@@ -18,12 +19,11 @@ class movieCNN(nn.Module):
         ptr_weight = torch.from_numpy(vocab.embedding.idx_to_vec.asnumpy())
 
         # static : non-trainable
-        self.st_embed = nn.Embedding(num_embeddings=len(vocab), embedding_dim=300, padding_idx=0) ## padding_idx의 의미가 뭐지?
-        self.st_embed.from_pretrained(ptr_weight) # from_pretrained(embeddings, freeze=True, sparse=False)
-
+        self.st_embed = Embedding(num_embedding=len(vocab), embedding_dim=300, is_pretrained=True,
+                                  idx_to_vec=ptr_weight, freeze=False)
         # non-static : trainable
-        self.non_st_embed = nn.Embedding(num_embeddings=len(vocab), embedding_dim=300, padding_idx=0)
-        self.st_embed.from_pretrained(ptr_weight, freeze=False)  # from_pretrained(embeddings, freeze=True, sparse=False)
+        self.non_st_embed = Embedding(num_embedding=len(vocab), embedding_dim=300, is_pretrained=True,
+                                  idx_to_vec=ptr_weight, freeze=True)
 
         # CNN
         self.conv_w3 = nn.Conv1d(in_channels=300, out_channels=100, kernel_size=3)
