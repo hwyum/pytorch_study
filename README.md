@@ -36,3 +36,9 @@
     |training loss|validation score|validation f1 score|
     |:-----------:|:--------------:|:-----------------:|
     |1.2          |127.940         |0.956              |
+
+## Neural Machine Translation (NMT)
+**9. wk9: NER with BiLSTM-CRF**
+* Dataset: [Korean-English Parallel Corpus](https://sites.google.com/site/koreanparalleldata/)
+* Reference: [Effective Approaches to Attention-based Neural Machine Translation
+](https://arxiv.org/abs/1508.04025) <br>
