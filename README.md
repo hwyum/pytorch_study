@@ -38,7 +38,7 @@
     |1.2          |127.940         |0.956              |
 
 ## Neural Machine Translation (NMT)
-**9. wk9: NER with BiLSTM-CRF**
+**[9. wk9: NER with BiLSTM-CRF](https://github.com/hwyum/pytorch_study/tree/master/wk9_NMT)**
 * Dataset: [Korean-English Parallel Corpus](https://sites.google.com/site/koreanparalleldata/)
 * Reference: [Effective Approaches to Attention-based Neural Machine Translation
 ](https://arxiv.org/abs/1508.04025) <br>
