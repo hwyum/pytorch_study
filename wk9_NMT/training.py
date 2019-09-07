@@ -25,7 +25,7 @@ dev = "cpu"
 
 
 
-def train(cfgpath, model_dir="./experiments/base_model", dev=None, from_checkpoint=False):
+def train(cfgpath, from_checkpoint=False, model_dir="./experiments/base_model", dev=None):
 
     # GPU Setting
     if dev == "cpu":
@@ -47,14 +47,8 @@ def train(cfgpath, model_dir="./experiments/base_model", dev=None, from_checkpoi
         vocab_tgt = pickle.load(io)
 
     # Load Model
-    # tag_to_ix = vocab_tag.token_to_idx
-    # valid_tags = list(tag_to_ix.values())[2:]  # for evaluation
-    # tag_to_ix[START_TAG] = len(tag_to_ix)
-    # tag_to_ix[STOP_TAG] = len(tag_to_ix)
     embedding_dim = params['model'].get('embedding_dim')
     hidden_dim = params['model'].get('hidden_dim')
-
-    # Todo: Model Update
     model = Seq2Seq(vocab_src, vocab_tgt, embedding_dim, hidden_dim, dev)
 
     # Build Data Loader
@@ -136,6 +130,8 @@ def train(cfgpath, model_dir="./experiments/base_model", dev=None, from_checkpoi
             'opt_state_dict': opt.state_dict()}
     savepath = params['filepath'].get('ckpt')
     torch.save(ckpt, savepath)
+
+
 
 
 if __name__ == '__main__':
