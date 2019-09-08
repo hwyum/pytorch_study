@@ -8,8 +8,7 @@ import random
 class Seq2Seq(nn.Module):
     """ model class for seq2seq with attention """
     def __init__(self, vocab_src:nlp.Vocab, vocab_tgt:nlp.Vocab, embedding_dim:int, hidden_dim:int, dev,
-                 num_layers:int=1, bos_idx=2, eos_idx=3, use_teacher_forcing:bool=True,
-                 teacher_forcing_ratio=0.5, use_attention=True):
+                 num_layers:int=1, bos_idx=2, eos_idx=3, use_attention=True):
         """ initialization of the class """
         super(Seq2Seq, self).__init__()
 
@@ -28,14 +27,18 @@ class Seq2Seq(nn.Module):
         self._attn = Attention(self._hidden_dim) if self._use_attention else None
 
         # teacher forcing related
-        self._use_teacher_forcing = use_teacher_forcing
-        self._teacher_forcing_ratio = teacher_forcing_ratio
+        self._use_teacher_forcing = None
+        self._teacher_forcing_ratio = None
 
-    def forward(self, inputs):
+    def forward(self, inputs, use_teacher_forcing=True, teacher_forcing_ratio=0.5):
         src, tgt_in, tgt_out = inputs
         batch_size = src.size()[0]
         max_len = tgt_in.size()[1]
         mask = (tgt_out != self._pad_idx)
+
+        # teacher forcing
+        self._use_teacher_forcing = use_teacher_forcing
+        self._teacher_forcing_ratio = teacher_forcing_ratio
 
         encoder_output, encoder_hidden = self._encoder(src) # encoder_out : (batch, max_len, hidden_dim * 2) (BiLSTM)
         decoder_input = torch.full((batch_size, 1), self._bos_idx).long().to(self._dev) # float32 -> int64
@@ -58,7 +61,7 @@ class Seq2Seq(nn.Module):
             loss += mask_loss
             nTotals += nTotal
 
-            # Teacher forcing: Feed the target as the next input --> 트레이닝 코드로.
+            # Teacher forcing: Feed the target as the next input
             if self._use_teacher_forcing:
                 if random.random() < self._teacher_forcing_ratio:
                     decoder_input = tgt_out[:,di].unsqueeze(-1)
@@ -68,7 +71,7 @@ class Seq2Seq(nn.Module):
                 decoder_input = decoded_label.squeeze(2)
             decoder_hidden = next_decoder_hidden
 
-        return loss, nTotals
+        return loss/max_len, nTotals
 
     def maskNLLLoss(self, decoder_output, target, mask, dev):
         """
