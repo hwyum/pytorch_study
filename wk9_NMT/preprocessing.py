@@ -37,6 +37,7 @@ def normalizeString(s):
     s = re.sub(r"[^가-힣a-zA-Z.!?]+", r" ", s)
     return s.strip()
 
+
 # 위 함수를 이용해 전처리
 def dataPreprocess(sentenceList):
     dataset = list(map(normalizeString, sentenceList))
@@ -51,20 +52,25 @@ data_tst_en = dataPreprocess(data_tst_en)
 
 
 # Save paired datasets
-tr_data_koen = pd.DataFrame(list(zip(data_tr_ko, data_tr_en)))
-dev_data_koen = pd.DataFrame(list(zip(data_dev_ko, data_dev_en)))
-tst_data_koen = pd.DataFrame(list(zip(data_tst_ko, data_tst_en)))
+tr_data_koen = pd.DataFrame(list(zip(data_tr_ko, data_tr_en)), columns=['ko','en'])
+dev_data_koen = pd.DataFrame(list(zip(data_dev_ko, data_dev_en)), columns=['ko','en'])
+tst_data_koen = pd.DataFrame(list(zip(data_tst_ko, data_tst_en)), columns=['ko','en'])
 
-tr_data_koen.to_csv(Path(data_root) / 'tr_data_koen.txt', sep='\t', header=None, index=False)
-dev_data_koen.to_csv(Path(data_root) / 'dev_data_koen.txt', sep='\t', header=None, index=False)
-tst_data_koen.to_csv(Path(data_root) / 'tst_data_koen.txt', sep='\t', header=None, index=False)
+tr_data_koen.to_csv(Path(data_root) / 'tr_data_koen.txt', sep='\t', index=False)
+dev_data_koen.to_csv(Path(data_root) / 'dev_data_koen.txt', sep='\t', index=False)
+tst_data_koen.to_csv(Path(data_root) / 'tst_data_koen.txt', sep='\t', index=False)
 
 
 # Build Vocab
-data_tr_koen = data_tr_ko + data_tr_en
-counter = nlp.data.count_tokens(itertools.chain.from_iterable([sentence.split() for sentence in data_tr_koen]))
-vocab = nlp.Vocab(counter, min_freq=10)
+# data_tr_koen = data_tr_ko + data_tr_en
+counter_ko = nlp.data.count_tokens(itertools.chain.from_iterable([sentence.split() for sentence in data_tr_ko]))
+counter_en = nlp.data.count_tokens(itertools.chain.from_iterable([sentence.split() for sentence in data_tr_en]))
+vocab_ko = nlp.Vocab(counter_ko, min_freq=10)
+vocab_en = nlp.Vocab(counter_en, min_freq=10)
 
 # Save Vocab
-with open(Path(data_root) / 'vocab.pkl', mode='wb') as io:
-    pickle.dump(vocab, io)
+with open(Path(data_root) / 'vocab_ko.pkl', mode='wb') as io:
+    pickle.dump(vocab_ko, io)
+
+with open(Path(data_root) / 'vocab_en.pkl', mode='wb') as io:
+    pickle.dump(vocab_en, io)
