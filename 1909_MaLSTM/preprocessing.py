@@ -28,6 +28,10 @@ tr_tokenized_q2 = [tokenizer.morphs(q) for q in train_df.question2]
 counter = nlp.data.count_tokens(itertools.chain.from_iterable([tokens for tokens in tr_tokenized_q1+tr_tokenized_q2]))
 vocab = nlp.Vocab(counter=counter, min_freq=10)
 
+# connecting embedding to vocab
+ptr_embedding = nlp.embedding.create('fasttext',source='wiki.ko')
+vocab.set_embedding(ptr_embedding)
+
 # save vocab
 vocab_path = Path(data_root) / 'vocab.pkl'
 with open(vocab_path, mode='wb') as io:
