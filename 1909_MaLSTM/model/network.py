@@ -11,7 +11,8 @@ class MaLSTM(nn.Module):
         """ initialization of MaLSTM class
         Args:
             vocab: vocabulary built from gluonnlp
-
+            embedding_dim: embedded vector's dimension
+            hidden_size: hidden size for lstm
         Returns:
             score: (batch, num_classes)
         """
@@ -23,7 +24,6 @@ class MaLSTM(nn.Module):
         self._embedding = Embedding(len(vocab.token_to_idx), embedding_dim, self._pad_idx, is_pretrained=True, idx_to_vec=ptr_weight,
                                     freeze=False, is_paired_input=True)
         self._lstm = LSTM(embedding_dim, hidden_size, is_paired_input=True)
-        self._similarity = Similarity()
         self._extractor = FeatureExtractor()
         self._classifier = nn.Linear(hidden_size*2,2)
 
