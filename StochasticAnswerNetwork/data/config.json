@@ -1,0 +1,7 @@
+{
+  "tr_path":  "./data/tr_pairs.csv",
+  "tst_path": "./data/tst_pairs.csv",
+  "val_path": "./data/val_pairs.csv",
+  "word_vocab_path": "./data/word_vocab.pkl",
+  "char_vocab_path": "./data/char_vocab.pkl"
+}
