@@ -1,5 +1,6 @@
 import torch
 import torch.nn as nn
+import torch.nn.functional as F
 import gluonnlp as nlp
 from typing import Union, Tuple
 from torch.nn.utils.rnn import pad_packed_sequence, pack_padded_sequence, PackedSequence
@@ -132,17 +133,6 @@ class Maxout(nn.Module):
         feature_2 = self._ops_2(x)
         return feature_1.max(feature_2)
 
-# class MaxOut(nn.Module):
-#     def __init__(self, input_size, hidden_size):
-#         super(MaxOut, self).__init__()
-#         self._ops_1 = nn.Linear(input_size, hidden_size)
-#         self._ops_2 = nn.Linear(input_size, hidden_size)
-#
-#     def forward(self, x: torch.Tensor) -> torch.Tensor:
-#         feature_1 = self._ops_1(x)
-#         feature_2 = self._ops_2(x)
-#         return feature_1.max(feature_2)
-
 
 class LexiconEncoding(nn.Module):
     #todo: pack padded sequence implementation
@@ -172,7 +162,7 @@ class LexiconEncoding(nn.Module):
 
 
 class ContextualEncoding(nn.Module):
-    def __init__(self, input_size:int, hidden_size:int, bidirectional:bool, num_layers:int):
+    def __init__(self, input_size:int, hidden_size:int, bidirectional:bool=True, num_layers:int=2):
         """
         Args:
             input_size(int): input size of input vectors (Here, output embedding size of lexicon encoding layer)
@@ -180,33 +170,67 @@ class ContextualEncoding(nn.Module):
             bidirectional(bool): whether lstm layer is bidirectional or not (default = False)
             num_layers(int): number of layers (default = 2)
         """
-        self._lstm = StackingLSTM(input_size, hidden_size, bidirectional, num_layers)
+        super(ContextualEncoding, self).__init__()
+        self._bilstm_1 = nn.LSTM(input_size, hidden_size, batch_first=True, num_layers=num_layers, bidirectional=bidirectional)
+        self._bilstm_2 = nn.LSTM(hidden_size * 2, hidden_size, batch_first=True, num_layers=num_layers, bidirectional=bidirectional)
+        # self._lstm = StackingLSTM(input_size, hidden_size, bidirectional, num_layers)
         self._maxout = Maxout(hidden_size * 2, hidden_size)
 
-    # todo: Implementation
+    # todo: Implementation of concatenation of 2 LSTM outputs
     def forward(self, inputs: Tuple[torch.Tensor, torch.Tensor]) -> Tuple[torch.Tensor, torch.Tensor]:
-        p_embedding, h_embedding = inputs
-        p_lstm_output = self._lstm(p_embedding)
-        h_lstm_output = self._lstm(h_embedding)
+        e_p, e_h = inputs
+        lstm_out_1_p = self._bilstm_1(e_p)[0]
+        lstm_out_1_h = self._bilstm_1(e_h)[0]
 
-        c_p = self._maxout(p_lstm_output)
-        c_h = self._maxout(h_lstm_output)
+        lstm_out_2_p = self._bilstm_2(lstm_out_1_p)[0]
+        lstm_out_2_h = self._bilstm_2(lstm_out_1_h)[0]
+
+        c_p_1 = self._maxout(lstm_out_1_p)
+        c_h_1 = self._maxout(lstm_out_1_h)
+
+        c_p_2 = self._maxout(lstm_out_2_p)
+        c_h_2 = self._maxout(lstm_out_2_h)
+
+        c_p = torch.cat((c_p_1, c_p_2), dim=2)
+        c_h = torch.cat((c_h_1, c_h_2), dim=2)
 
         return c_p, c_h
 
 
-class InformationGathering(nn.Module):
+class Memory(nn.Module):
    """
-   class for information gathering with dot-product attention
+   class for memory(information gathering) with dot-product attention
    """
     # todo: Implementation
-    def __init__(self, input_size):
-        """
-        Args:
-            input_size:
-        """
-        _transform = nn.Linear(input_size, input_size)
+    def __init__(self, input_size, hidden_size):
+        super(Memory, self).__init__()
+        _transform = nn.Linear(input_size, input_size, bias=False)
+        _dropout = nn.Dropout()
+        _bilstm = nn.LSTM(hidden_size * 4, hidden_size, batch_first=True, bidirectional=True)
 
     # todo: Implementation
+    def forward(self, inputs):
+        c_p, c_h = inputs
+        c_p_hat = F.relu(self._transform(c_p))
+        c_h_hat = F.relu(self._transform(c_h))
+
+        # attention matrix
+        a = self._dropout(torch.bmm(c_p_hat, c_h_hat.permute(0, 2, 1)))
+
+        u_p = torch.cat((c_p, torch.bmm(a, c_h)), dim=2)
+        u_h = torch.cat((c_h, torch.bmm(a.permute(0, 2, 1), c_p)), dim=2)
+
+        up_cp = torch.cat((u_p, c_p), dim=2)
+        uh_ch = torch.cat((u_h, c_h), dim=2)
+        m_p = self._bilstm(up_cp)[0]
+        m_h = self._bilstm(uh_ch)[0]
+
+        return m_p, m_h
+
+
+#todo: Implementation
+class Answer(nn.Module):
+    def __init__(self):
+
     def forward(self, inputs):
         return
