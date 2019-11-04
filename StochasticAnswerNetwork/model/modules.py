@@ -202,11 +202,11 @@ class Memory(nn.Module):
    class for memory(information gathering) with dot-product attention
    """
     # todo: Implementation
-    def __init__(self, input_size, hidden_size):
+    def __init__(self, hidden_size):
         super(Memory, self).__init__()
-        _transform = nn.Linear(input_size, input_size, bias=False)
-        _dropout = nn.Dropout()
-        _bilstm = nn.LSTM(hidden_size * 4, hidden_size, batch_first=True, bidirectional=True)
+        self._transform = nn.Linear(hidden_size * 2, hidden_size * 2, bias=False)
+        self._dropout = nn.Dropout()
+        self._bilstm = nn.LSTM(hidden_size * 6, hidden_size, batch_first=True, bidirectional=True)
 
     # todo: Implementation
     def forward(self, inputs):
@@ -217,10 +217,10 @@ class Memory(nn.Module):
         # attention matrix
         a = self._dropout(torch.bmm(c_p_hat, c_h_hat.permute(0, 2, 1)))
 
-        u_p = torch.cat((c_p, torch.bmm(a, c_h)), dim=2)
+        u_p = torch.cat((c_p, torch.bmm(a, c_h)), dim=2) # 4d
         u_h = torch.cat((c_h, torch.bmm(a.permute(0, 2, 1), c_p)), dim=2)
 
-        up_cp = torch.cat((u_p, c_p), dim=2)
+        up_cp = torch.cat((u_p, c_p), dim=2) # 6d
         uh_ch = torch.cat((u_h, c_h), dim=2)
         m_p = self._bilstm(up_cp)[0]
         m_h = self._bilstm(uh_ch)[0]
@@ -230,7 +230,52 @@ class Memory(nn.Module):
 
 #todo: Implementation
 class Answer(nn.Module):
-    def __init__(self):
+    def __init__(self, hidden_size, step, num_class, prediction_dropout=0.2):
+        self._step = step
+        self._num_class = num_class
+
+        self._theta_2 = nn.Parameter(torch.randn(1, hidden_size * 2)) # (1, 2d)
+        self._theta_3 = nn.Parameter(torch.randn(hidden_size * 2, hidden_size * 2)) # (2d, 2d)
+        self._theta_4 = nn.Parameter(torch.randn(hidden_size * 8, num_class)) # (8d, num_class)
+        self._gru = nn.GRUCell(hidden_size * 2, hidden_size * 2)
+
+        self._prediction_dropout = prediction_dropout
 
     def forward(self, inputs):
-        return
+        m_p, m_h = inputs
+        alpha = F.softmax(self._theta_2 @ m_h.permute(0, 2, 1), dim=2) # (batch, 1, len)
+        beta = F.softmax(self._theta_3 @ m_p.permute(0, 2, 1), dim=2)
+        s_0 = torch.bmm(alpha, m_h) # (batch, 1, 2d)
+
+        s_t_all = {}
+        x_t_all = {}
+
+        s_t_1 = s_0.squeeze(1) # (batch, 2d)
+        for i in range(self._step):
+
+            # find beta
+            tmp = s_t_1 @ self._theta_3  # (batch, 2d) (2d, 2d) => (batch, 2d)
+            tmp = torch.bmm(tmp.unsqueeze(1), m_p.permute(0, 2, 1))  # (batch, 1, 2d) (batch, 2d, len) => (batch, 1, len)
+            beta = F.softmax(tmp, dim=2)
+
+            x_t = torch.bmm(beta, m_p).squeeze(1)  # (batch, 1, 2d)
+            s_t = self._gru(x_t, s_t_1)
+            s_t_1 = s_t
+
+            s_t_all[i] = s_t
+            x_t_all[i] = x_t
+
+        else:
+            p_t_all = []
+            for j in range(self._step):
+                s_t = s_t_all[j]
+                x_t = x_t_all[j]
+                features = torch.cat((s_t, x_t, torch.abs(s_t-x_t), s_t * x_t), dim=1)
+                p_t = F.softmax(features @ self._theta_4, dim=1)
+                p_t_all.append(p_t)
+
+            # dropout은 어떻게??
+            p_r = torch.mean(torch.stack(p_t_all), dim=0)
+            cls = torch.argmax(p_r, dim=0)
+
+        return cls
