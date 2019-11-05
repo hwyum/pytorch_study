@@ -4,6 +4,7 @@ import torch.nn.functional as F
 import gluonnlp as nlp
 from typing import Union, Tuple
 from torch.nn.utils.rnn import pad_packed_sequence, pack_padded_sequence, PackedSequence
+import random
 
 
 class Embedding(nn.Module):
@@ -197,13 +198,13 @@ class ContextualEncoding(nn.Module):
         return c_p, c_h
 
 
-class Memory(nn.Module):
-   """
-   class for memory(information gathering) with dot-product attention
-   """
+class MemoryModule(nn.Module):
+    """
+    class for memory(information gathering) with dot-product attention
+    """
     # todo: Implementation
     def __init__(self, hidden_size):
-        super(Memory, self).__init__()
+        super(MemoryModule, self).__init__()
         self._transform = nn.Linear(hidden_size * 2, hidden_size * 2, bias=False)
         self._dropout = nn.Dropout()
         self._bilstm = nn.LSTM(hidden_size * 6, hidden_size, batch_first=True, bidirectional=True)
@@ -229,14 +230,16 @@ class Memory(nn.Module):
 
 
 #todo: Implementation
-class Answer(nn.Module):
+class AnswerModule(nn.Module):
     def __init__(self, hidden_size, step, num_class, prediction_dropout=0.2):
+        super(AnswerModule, self).__init__()
         self._step = step
         self._num_class = num_class
 
         self._theta_2 = nn.Parameter(torch.randn(1, hidden_size * 2)) # (1, 2d)
         self._theta_3 = nn.Parameter(torch.randn(hidden_size * 2, hidden_size * 2)) # (2d, 2d)
-        self._theta_4 = nn.Parameter(torch.randn(hidden_size * 8, num_class)) # (8d, num_class)
+        # self._theta_4 = nn.Parameter(torch.randn(hidden_size * 8, num_class)) # (8d, num_class)
+        self._classifier = nn.Linear(hidden_size * 8, num_class)
         self._gru = nn.GRUCell(hidden_size * 2, hidden_size * 2)
 
         self._prediction_dropout = prediction_dropout
@@ -271,11 +274,15 @@ class Answer(nn.Module):
                 s_t = s_t_all[j]
                 x_t = x_t_all[j]
                 features = torch.cat((s_t, x_t, torch.abs(s_t-x_t), s_t * x_t), dim=1)
-                p_t = F.softmax(features @ self._theta_4, dim=1)
+                # p_t = F.softmax(features @ self._theta_4, dim=1)
+                p_t = self._classifier(features)
                 p_t_all.append(p_t)
 
             # dropout은 어떻게??
-            p_r = torch.mean(torch.stack(p_t_all), dim=0)
-            cls = torch.argmax(p_r, dim=0)
+            included_step_num = self._step - int(self._step * self._prediction_dropout)
+            included_step = random.sample(range(self._step), included_step_num)
+            p_t_all = [p_t for i, p_t in enumerate(p_t_all) if i in included_step]
 
-        return cls
+            p_r = torch.mean(torch.stack(p_t_all), dim=0)
+
+        return p_r
