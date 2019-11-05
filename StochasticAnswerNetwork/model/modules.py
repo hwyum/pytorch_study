@@ -247,7 +247,6 @@ class AnswerModule(nn.Module):
     def forward(self, inputs):
         m_p, m_h = inputs
         alpha = F.softmax(self._theta_2 @ m_h.permute(0, 2, 1), dim=2) # (batch, 1, len)
-        beta = F.softmax(self._theta_3 @ m_p.permute(0, 2, 1), dim=2)
         s_0 = torch.bmm(alpha, m_h) # (batch, 1, 2d)
 
         s_t_all = {}
