@@ -87,7 +87,7 @@ if __name__ == '__main__':
     val_ds = SentencePair(data_config.val_path, word_vocab, char_vocab, word_tokenizer, char_tokenizer, char_padder)
 
     tr_dl = DataLoader(tr_ds, batch_size=model_config.batch_size, collate_fn=collate_fn, shuffle=True)
-    val_dl = DataLoader(tr_ds, batch_size=model_config.batch_size * 2, collate_fn=collate_fn, shuffle=False)
+    val_dl = DataLoader(val_ds, batch_size=model_config.batch_size * 2, collate_fn=collate_fn, shuffle=False)
 
     # loss function and optimization
     loss_fn = nn.CrossEntropyLoss()
