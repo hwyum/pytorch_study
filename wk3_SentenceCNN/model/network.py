@@ -4,7 +4,7 @@ import torch.nn.functional as F
 from gluonnlp import Vocab
 from model.modules import Embedding
 
-class movieCNN(nn.Module):
+class SentenceCNN(nn.Module):
     ''' CNN Network implementation'''
     def __init__(self, vocab:Vocab, class_num):
         """Instantiating movieCNN class
@@ -14,9 +14,9 @@ class movieCNN(nn.Module):
 
         """
 
-        super(movieCNN, self).__init__()
+        super(SentenceCNN, self).__init__()
 
-        ptr_weight = torch.from_numpy(vocab.embedding.idx_to_vec.asnumpy())
+        ptr_weight = torch.from_numpy(vocab.embedding).float()
 
         # static : non-trainable
         self.st_embed = Embedding(num_embedding=len(vocab), embedding_dim=300, is_pretrained=True,
@@ -41,8 +41,8 @@ class movieCNN(nn.Module):
 
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
-        static_batch  = self.st_embed(x) # shape : batch * seq_len * embedding_dim
-        static_batch = static_batch.permute(0, 2, 1) # for Conv1d
+        static_batch = self.st_embed(x)  # shape : batch * seq_len * embedding_dim
+        static_batch = static_batch.permute(0, 2, 1)  # for Conv1d
 
         non_static_batch = self.non_st_embed(x)
         non_static_batch = non_static_batch.permute(0, 2, 1)
