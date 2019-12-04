@@ -1,0 +1,7 @@
+{
+  "tr_path": "./data/tr_ratings.txt",
+  "val_path": "./data/dev_ratings.txt",
+  "tst_path": "./data/tst_ratings.txt",
+  "ckpt": "./checkpoint/model_ckpt.tar",
+  "vocab_path": "./data/vocab.pkl"
+}
