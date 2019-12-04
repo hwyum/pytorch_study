@@ -49,5 +49,5 @@ with open('./data/vocab.pkl', mode = 'wb') as io:
 
 # saving training / test dataset to txt
 tr_data.to_csv('./data/tr_ratings.txt', index=False, sep='\t')
-dev_data.to_csv('./data/tr_ratings.txt', index=False, sep='\t')
+dev_data.to_csv('./data/dev_ratings.txt', index=False, sep='\t')
 tst_data.to_csv('./data/tst_ratings.txt', index=False, sep='\t')
