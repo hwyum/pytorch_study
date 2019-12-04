@@ -53,7 +53,7 @@ class Vocab:
         self._bos_token = bos_token
         self._eos_token = eos_token
         self._reserved_tokens = reserved_tokens
-        self._idx_to_token = [unknown_token] if unknown_token else []
+        self._idx_to_token = []
         self._token_to_idx = {}
 
         for token in [
@@ -236,7 +236,7 @@ class Tokenizer:
     def tokenize_and_transform(self, sent:str):
         """ return indicies given sentence (first transform to tokens and to indicies """
         tokens = self._split_fn(sent)
-        indicies = self.vocab.to_indicies(tokens)
+        indicies = self.vocab.to_indices(tokens)
         return indicies
 
 
@@ -249,7 +249,7 @@ class PadSequence:
         pad_val(int): The pad value. Default: 0
         clip(bool): whether or not clip the sentence if sentence has length larger than given length. Default: True
     """
-    def __init__(self, length:int, pad_val:int, clip:bool=True):
+    def __init__(self, length:int, pad_val:int=0, clip:bool=True):
         self._length = length
         self._pad_val = pad_val
         self._clip = clip
