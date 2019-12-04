@@ -115,7 +115,7 @@ if __name__ == '__main__':
             # Summary
             tr_summary = {"loss": avg_tr_loss, "acc": tr_acc}
             val_summary = {"loss": avg_dev_loss, "acc": dev_acc}
-            tqdm.write('epoch : {}, tr_loss : {:3f}, tst_loss : {:3f}, tr_acc: {:2f}, tst_acc : {:2f}'
+            tqdm.write('epoch : {}, tr_loss : {:.3f}, tst_loss : {:.3f}, tr_acc: {:.2f}, tst_acc : {:.2f}'
                        .format(epoch+1, tr_summary["loss"], val_summary["loss"], tr_summary["acc"], val_summary["acc"]))
 
             is_best = avg_dev_loss < best_val_loss
