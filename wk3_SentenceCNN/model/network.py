@@ -1,7 +1,8 @@
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-from gluonnlp import Vocab
+# from gluonnlp import Vocab
+from model.utils import Vocab
 from model.modules import Embedding
 
 class SentenceCNN(nn.Module):
