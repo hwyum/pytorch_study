@@ -68,11 +68,11 @@ if __name__ == '__main__':
     tst_loss, tst_acc = evaluate(model, F.cross_entropy, tst_dl, dev)
     print("test accuracy: {:.3f}, test loss: {:.3f}".format(tst_acc, tst_loss))
 
-    # # summary update
-    # test_summary = {'acc': tst_acc, 'loss': tst_loss}
-    # summary_manager = SummaryManager.load('summary.json')
-    # summary = summary_manager._summary
-    # summary['test'] = test_summary
-    # summary_manager.update(summary)
-    # summary_manager.save("summary.json")
+    # summary update
+    test_summary = {'acc': tst_acc, 'loss': tst_loss}
+    summary_manager = SummaryManager(model_dir)
+    summary = summary_manager.load('summary.json')._summary
+    summary['test'] = test_summary
+    summary_manager.update(summary)
+    summary_manager.save("summary.json")
 
