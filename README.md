@@ -1,22 +1,30 @@
 # NLP Implementation in PyTorch
 
 ## PyTorch basic
-**1. wk1: pytorch official toturial**
+**1. pytorch official toturial**
   * [What is torch.nn really?](https://pytorch.org/tutorials/beginner/nn_tutorial.html)
   * Data Loading and processing tutorial
   * Saving and loading models
 
 
-**2. wk2: CIFAR10 CNN Implementation with custom DataLoader**
+**2. CIFAR10 CNN Implementation with custom DataLoader**
 
 ## Classification
-**[3. wk3: Naver Movie Classification](https://github.com/hwyum/pytorch_study/tree/master/wk3_movie_classification)**
+**[3. SentenceCNN](https://github.com/hwyum/pytorch_study/tree/master/wk3_movie_classification)**
+ * Dataset: [Naver sentiment movie corpus](https://github.com/e9t/nsmc)
  * Reference: [Convolutional Neural Networks for Sentence Classification](https://arxiv.org/abs/1408.5882)
+ * Result: 20 Epochs
+ 
+    |training acc|validation acc|test acc|
+    |:----------:|:------------:|:------:|
+    |0.876       |0.851         |0.855   |
 
-**[4. wk4: Naver Movie Classification in Character level](https://github.com/hwyum/pytorch_study/tree/master/wk4_CharacterCNN)**
+**[4. CharacterCNN](https://github.com/hwyum/pytorch_study/tree/master/wk4_CharacterCNN)**
+ * Dataset: [Naver sentiment movie corpus](https://github.com/e9t/nsmc)
  * Reference: [Character-level Convolutional Networks for Text Classification](https://arxiv.org/abs/1509.01626)
 
-**[5. wk5: Naver movie Classification with Very Deep CNN](https://github.com/hwyum/pytorch_study/tree/master/wk5_VeryDeepCNN)**
+**[5. Very Deep CNN](https://github.com/hwyum/pytorch_study/tree/master/wk5_VeryDeepCNN)**
+* Dataset: [Naver sentiment movie corpus](https://github.com/e9t/nsmc)
 * Reference: [Very Deep Convolutional Networks for Text Classification](https://arxiv.org/abs/1606.01781) 
 
 **[6. wk6: Naver movie Classification with ConvRec](https://github.com/hwyum/pytorch_study/tree/master/wk6_ConvRec)**
